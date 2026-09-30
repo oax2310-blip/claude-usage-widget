@@ -167,6 +167,9 @@ public class UsageInputActivity extends Activity {
         // claude.ai 화면을 그리는 데 필요(앱은 떠 있는 화면의 글자를 읽기만 하고 페이지를 바꾸지 않음)
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        // 폰의 파일·다른 앱 데이터(content://)는 페이지가 못 열게
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
         CookieManager cm = CookieManager.getInstance();
         cm.setAcceptCookie(true);
         cm.setAcceptThirdPartyCookies(web, true);
@@ -174,10 +177,10 @@ public class UsageInputActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
+                if (!req.isForMainFrame()) return false;
                 Uri u = req.getUrl();
-                String scheme = u.getScheme();
-                if ("http".equals(scheme) || "https".equals(scheme)) return false;
-                // mailto: 등은 다른 앱으로
+                // 팝업 안에서는 claude.ai·로그인 제공자만. 다른 사이트·mailto: 등은 폰 브라우저·다른 앱으로
+                if (SafeHosts.allowed(u.getScheme(), u.getHost())) return false;
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, u));
                 } catch (Exception ignored) {
@@ -275,10 +278,11 @@ public class UsageInputActivity extends Activity {
             CharSequence t = clip.getItemAt(0).coerceToText(this);
             if (t != null) u = t.toString().trim();
         }
-        if (u.startsWith("https://")) {
+        Uri link = Uri.parse(u);
+        if (SafeHosts.allowed(link.getScheme(), link.getHost())) {
             web.loadUrl(u);
         } else {
-            toast("메일의 로그인 링크를 길게 눌러 복사한 뒤 눌러 주세요");
+            toast("claude.ai 로그인 링크만 열 수 있어요 — 메일의 로그인 링크를 길게 눌러 복사한 뒤 눌러 주세요");
         }
     }
 

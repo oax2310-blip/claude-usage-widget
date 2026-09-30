@@ -26,6 +26,10 @@ public class InstallReceiver extends BroadcastReceiver {
         String msg;
         if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
             msg = "업데이트를 취소했어요";
+        } else if (status == PackageInstaller.STATUS_FAILURE_CONFLICT
+                || status == PackageInstaller.STATUS_FAILURE_INCOMPATIBLE) {
+            // 서명 키가 바뀐 버전(비공개 키로 바꿀 때 등)은 덮어쓸 수 없음
+            msg = "서명이 바뀐 버전이라 업데이트할 수 없어요 — 앱을 지우고 릴리스에서 새로 설치해 주세요";
         } else {
             String detail = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
             msg = "업데이트 실패" + (detail != null ? ": " + detail : "");

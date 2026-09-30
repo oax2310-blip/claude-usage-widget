@@ -6,6 +6,10 @@ on:
 permissions:
   contents: write
   issues: write
+# 동시에 두 번 돌면 첫 서명 키를 두 개 만들 수 있어서 한 번에 하나씩
+concurrency:
+  group: build
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,3 +26,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RUN: ${{ github.run_number }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
