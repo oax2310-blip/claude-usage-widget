@@ -2,5 +2,6 @@
 build/
 app/build/
 app/debug.keystore
+app/release.p12
 local.properties
 *.apk
