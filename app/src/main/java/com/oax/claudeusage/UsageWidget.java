@@ -62,7 +62,7 @@ public class UsageWidget extends AppWidgetProvider {
         v.setTextViewText(R.id.w_daily, Fmt.pct(r.dailyBase));
         v.setTextViewText(R.id.w_refresh, "↻ " + Fmt.clock(now));
         if (!r.configured) {
-            v.setTextViewText(R.id.w_remain, "--");
+            v.setTextViewText(R.id.w_pace, "--");
             v.setTextViewText(R.id.w_countdown, "탭해서 초기화 시각을 설정하세요");
             if (full) {
                 v.setProgressBar(R.id.w_pace_bar, 1000, 0, false);
@@ -72,7 +72,7 @@ public class UsageWidget extends AppWidgetProvider {
             }
             return;
         }
-        v.setTextViewText(R.id.w_remain, Fmt.pct(r.paceRemaining));
+        v.setTextViewText(R.id.w_pace, Fmt.pct(r.paceUsed));
         if (!full) {
             v.setTextViewText(R.id.w_countdown, Fmt.duration(r.remainingMs) + " 후 초기화");
             return;

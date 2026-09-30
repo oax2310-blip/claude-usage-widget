@@ -22,7 +22,7 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
     private Store store;
-    private TextView tvDaily, tvRemain, tvCountdown, tvPaceLabel, tvUsedLabel, tvUsageInfo;
+    private TextView tvDaily, tvPace, tvCountdown, tvPaceLabel, tvUsedLabel, tvUsageInfo;
     private ProgressBar pbPace, pbUsed;
     private Button btnReset;
     private EditText etPeriod, etUsed;
@@ -43,7 +43,7 @@ public class MainActivity extends Activity {
         store = new Store(this);
 
         tvDaily = findViewById(R.id.tv_daily);
-        tvRemain = findViewById(R.id.tv_remain);
+        tvPace = findViewById(R.id.tv_pace);
         tvCountdown = findViewById(R.id.tv_countdown);
         tvPaceLabel = findViewById(R.id.tv_pace_label);
         tvUsedLabel = findViewById(R.id.tv_used_label);
@@ -148,7 +148,7 @@ public class MainActivity extends Activity {
 
         tvDaily.setText(Fmt.pct(r.dailyBase));
         if (!r.configured) {
-            tvRemain.setText("--");
+            tvPace.setText("--");
             tvCountdown.setText("아래 1번에서 초기화 시각을 설정하세요");
             btnReset.setText("초기화 시각 선택");
             tvPaceLabel.setVisibility(View.GONE);
@@ -159,13 +159,13 @@ public class MainActivity extends Activity {
             return;
         }
 
-        tvRemain.setText(Fmt.pct(r.paceRemaining));
+        tvPace.setText(Fmt.pct(r.paceUsed));
         tvCountdown.setText("초기화까지 " + Fmt.duration(r.remainingMs) + "\n" + Fmt.dateLong(r.resetAt));
         btnReset.setText(Fmt.dateLong(r.resetAt));
 
         tvPaceLabel.setVisibility(View.VISIBLE);
         pbPace.setVisibility(View.VISIBLE);
-        tvPaceLabel.setText("지금까지 권장 누적 " + Fmt.pct(r.paceUsed));
+        tvPaceLabel.setText("초기화까지 남은 권장 " + Fmt.pct(r.paceRemaining));
         pbPace.setProgress((int) Math.round(r.paceUsed * 10));
 
         tvUsageInfo.setVisibility(View.VISIBLE);
