@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 한 줄(5x1) 위젯: 왼쪽 권장 누적 · 가운데 사용량 + 막대 + 하루·초기화 · 오른쪽 새로고침 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg_claude"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="18dp"
+    android:paddingEnd="6dp">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/w_pace_num"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFeatureSettings="tnum"
+                android:includeFontPadding="false"
+                android:letterSpacing="-0.02"
+                android:maxLines="1"
+                android:text="--"
+                android:textColor="@color/claude_fg"
+                android:textFontWeight="800"
+                android:textSize="26sp" />
+
+            <TextView
+                android:id="@+id/w_pace_pct"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="1dp"
+                android:includeFontPadding="false"
+                android:text="%"
+                android:textColor="@color/claude_pct"
+                android:textFontWeight="700"
+                android:textSize="14sp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:maxLines="1"
+            android:text="권장 누적"
+            android:textColor="@color/claude_sub"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/w_top_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/w_dot"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:layout_marginEnd="5dp"
+                android:importantForAccessibility="no"
+                android:src="@drawable/dot_clay" />
+
+            <TextView
+                android:id="@+id/w_top_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:text="사용 "
+                android:textColor="@color/claude_sub"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/w_top_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFeatureSettings="tnum"
+                android:maxLines="1"
+                android:textColor="@color/claude_fg"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/w_status"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:ellipsize="end"
+                android:fontFeatureSettings="tnum"
+                android:maxLines="1"
+                android:textColor="@color/claude_ok_text"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/w_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="탭해서 초기화 시각을 설정하세요"
+            android:textColor="@color/claude_fg"
+            android:textFontWeight="500"
+            android:textSize="13sp" />
+
+        <ProgressBar
+            android:id="@+id/w_bar"
+            style="@android:style/Widget.Material.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="10dp"
+            android:layout_marginTop="6dp"
+            android:max="1000"
+            android:maxHeight="10dp"
+            android:minHeight="10dp"
+            android:progressDrawable="@drawable/wide_bar" />
+
+        <TextView
+            android:id="@+id/w_meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:fontFeatureSettings="tnum"
+            android:maxLines="1"
+            android:text="하루 권장 14.3%"
+            android:textColor="@color/claude_sub"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/w_refresh"
+        android:layout_width="34dp"
+        android:layout_height="52dp"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <ImageView
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:contentDescription="새로고침"
+            android:src="@drawable/ic_refresh" />
+
+        <TextView
+            android:id="@+id/w_refresh_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:fontFeatureSettings="tnum"
+            android:text="--:--"
+            android:textColor="@color/claude_sub"
+            android:textSize="10sp" />
+    </LinearLayout>
+</LinearLayout>

@@ -13,7 +13,10 @@ import android.widget.RemoteViews;
 
 import java.util.Map;
 
-/** 홈 화면 위젯. 30분마다 자동 갱신, ↻ 누르면 즉시 갱신, 나머지 부분을 누르면 앱 열림. */
+/**
+ * 홈 화면 위젯. 30분마다 자동 갱신, ↻ 누르면 즉시 갱신, 나머지 부분을 누르면 앱 열림.
+ * 크기에 따라 작은 / 한 줄(5x1) / 큰 레이아웃 중 알맞은 것이 표시됨.
+ */
 public class UsageWidget extends AppWidgetProvider {
     static final String ACTION_REFRESH = "com.oax.claudeusage.REFRESH";
 
@@ -36,8 +39,10 @@ public class UsageWidget extends AppWidgetProvider {
 
     static void updateAll(Context ctx) {
         AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
-        int[] ids = mgr.getAppWidgetIds(new ComponentName(ctx, UsageWidget.class));
-        if (ids != null && ids.length > 0) update(ctx, mgr, ids);
+        for (Class<?> c : new Class<?>[] {UsageWidget.class, UsageWidgetWide.class}) {
+            int[] ids = mgr.getAppWidgetIds(new ComponentName(ctx, c));
+            if (ids != null && ids.length > 0) update(ctx, mgr, ids);
+        }
     }
 
     private static void update(Context ctx, AppWidgetManager mgr, int[] ids) {
@@ -48,14 +53,21 @@ public class UsageWidget extends AppWidgetProvider {
 
     private static RemoteViews build(Context ctx, UsageCalc.Result r, long now) {
         RemoteViews small = new RemoteViews(ctx.getPackageName(), R.layout.widget_small);
+        RemoteViews wide = new RemoteViews(ctx.getPackageName(), R.layout.widget_wide);
         RemoteViews full = new RemoteViews(ctx.getPackageName(), R.layout.widget_usage);
+        RemoteViews fullWide = new RemoteViews(ctx.getPackageName(), R.layout.widget_usage);
         fill(small, r, now, false);
+        fillWide(wide, WideModel.of(r), now);
         fill(full, r, now, true);
-        bindClicks(ctx, small);
-        bindClicks(ctx, full);
+        fill(fullWide, r, now, true);
+        for (RemoteViews v : new RemoteViews[] {small, wide, full, fullWide}) bindClicks(ctx, v);
+        // 시스템이 위젯 크기에 맞는(들어가면서 가장 가까운) 레이아웃을 고름:
+        // 폭 280dp 이상 한 줄 높이 → 한 줄, 두 줄 이상 → 큰 레이아웃
         Map<SizeF, RemoteViews> m = new ArrayMap<>();
         m.put(new SizeF(100f, 40f), small);
+        m.put(new SizeF(280f, 40f), wide);
         m.put(new SizeF(220f, 115f), full);
+        m.put(new SizeF(300f, 115f), fullWide);
         return new RemoteViews(m);
     }
 
@@ -94,6 +106,30 @@ public class UsageWidget extends AppWidgetProvider {
             v.setViewVisibility(R.id.w_usage_ok, View.GONE);
             v.setViewVisibility(R.id.w_usage_over, View.GONE);
         }
+    }
+
+    private static void fillWide(RemoteViews v, WideModel m, long now) {
+        v.setTextViewText(R.id.w_pace_num, m.paceNum);
+        v.setViewVisibility(R.id.w_pace_pct, m.showPct ? View.VISIBLE : View.GONE);
+        v.setViewVisibility(R.id.w_hint, m.showHint ? View.VISIBLE : View.GONE);
+        v.setViewVisibility(R.id.w_top_row, m.showHint ? View.GONE : View.VISIBLE);
+        if (!m.showHint) {
+            boolean hasStatus = m.status != null;
+            v.setViewVisibility(R.id.w_dot, hasStatus ? View.VISIBLE : View.GONE);
+            v.setImageViewResource(R.id.w_dot, m.statusOver ? R.drawable.dot_over : R.drawable.dot_clay);
+            v.setTextViewText(R.id.w_top_label, m.topLabel);
+            v.setTextViewText(R.id.w_top_value, m.topValue);
+            v.setViewVisibility(R.id.w_status, hasStatus ? View.VISIBLE : View.GONE);
+            v.setTextViewText(R.id.w_status, hasStatus ? m.status : "");
+            v.setColor(R.id.w_status, "setTextColor",
+                    m.statusOver ? R.color.claude_warn_text : R.color.claude_ok_text);
+        }
+        v.setProgressBar(R.id.w_bar, WideModel.BAR_MAX, m.barProgress, false);
+        v.setInt(R.id.w_bar, "setSecondaryProgress", m.barSecondary);
+        v.setColorStateList(R.id.w_bar, "setSecondaryProgressTintList",
+                m.barOver ? R.color.claude_over : R.color.claude_spare);
+        v.setTextViewText(R.id.w_meta, m.meta);
+        v.setTextViewText(R.id.w_refresh_time, Fmt.clock(now));
     }
 
     private static void bindClicks(Context ctx, RemoteViews v) {
