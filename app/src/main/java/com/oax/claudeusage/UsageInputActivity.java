@@ -38,6 +38,7 @@ public class UsageInputActivity extends Activity {
     private View loginRow, progress;
     /** 로그인 화면을 거쳤는지(로그인을 마치고 다른 화면으로 가면 사용량 페이지로 다시 보냄) */
     private boolean sawLogin;
+    private boolean keyboardShown;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,12 +57,11 @@ public class UsageInputActivity extends Activity {
             v.setPadding(pad + b.left, pad + b.top, pad + b.right, pad + b.bottom);
             return insets;
         });
-        // 처음엔 페이지를 크게 보도록 키보드 없이, 입력 칸을 누르면 값 전체가 선택된 채 키보드가 뜸
-        root.setFocusableInTouchMode(true);
-        root.requestFocus();
-
+        // 열리자마자 입력 칸에 커서 + 기존 값 전체 선택 + 숫자 키보드(페이지는 위쪽에 남음)
         et = findViewById(R.id.in_used);
         if (r.hasUsage) et.setText(MainActivity.trim((float) r.used));
+        et.requestFocus();
+        et.selectAll();
         et.setOnEditorActionListener((v, id, e) -> {
             if (id == EditorInfo.IME_ACTION_DONE) { save(); return true; }
             return false;
@@ -174,6 +174,16 @@ public class UsageInputActivity extends Activity {
                 })
                 .setNegativeButton("취소", null)
                 .show();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // stateAlwaysVisible로 안 뜨는 기기 대비: 처음 창이 뜰 때 입력 칸이 포커스면 키보드 올리기
+        if (hasFocus && !keyboardShown && et.hasFocus()) {
+            keyboardShown = true;
+            getWindow().getInsetsController().show(WindowInsets.Type.ime());
+        }
     }
 
     @Override
