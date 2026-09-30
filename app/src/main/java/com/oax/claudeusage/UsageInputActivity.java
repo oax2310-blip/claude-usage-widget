@@ -30,6 +30,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.json.JSONTokener;
 
 /**
@@ -42,12 +43,19 @@ import org.json.JSONTokener;
 public class UsageInputActivity extends Activity {
     private static final String ORIGIN = "https://claude.ai";
     private static final String USAGE_URL = ORIGIN + "/settings/usage";
-    /** 떠 있는 설정 창(없으면 페이지 전체)의 글자 — 읽기만 하고 페이지는 건드리지 않음 */
-    private static final String READ_TEXT = "(function(){var d=document.querySelector('[role=dialog]')"
-            + "||document.body;return d?d.innerText:'';})()";
-    /** 사용량 막대가 그려질 때까지 이 간격으로 이 횟수만큼(약 12초) 다시 봄 */
+    /**
+     * 떠 있는 설정 창들(없으면 페이지 전체)의 글자와 어디서 읽었는지 — 읽기만 하고 페이지는 건드리지 않음.
+     * 설정 창이 여러 개일 수 있어서(숨은 창 등) 모두 합쳐 읽음
+     */
+    private static final String READ_TEXT = "(function(){"
+            + "var ds=[].slice.call(document.querySelectorAll('[role=dialog]'));"
+            + "var t=ds.map(function(e){return e.innerText||'';}).join('\\n');"
+            + "var src='설정 창 '+ds.length+'개';"
+            + "if(!t.trim()){t=document.body?document.body.innerText:'';src='페이지 전체';}"
+            + "return JSON.stringify({src:src,text:t});})()";
+    /** 사용량 막대가 그려질 때까지 이 간격으로 이 횟수만큼(약 18초) 다시 봄 */
     private static final long READ_EVERY = 600;
-    private static final int READ_MAX = 20;
+    private static final int READ_MAX = 30;
 
     private Store store;
     private EditText et;
@@ -59,6 +67,8 @@ public class UsageInputActivity extends Activity {
     /** 페이지에서 가져와 채웠는지 / 사용자가 직접 눌러 고쳤는지(그러면 더 채우지 않음) */
     private boolean filled, userEdited;
     private int readTries;
+    /** 마지막으로 읽은 주소·읽은 곳·글자 — 못 가져왔을 때 '이유 보기'에 보여 줌(폰 밖으로 안 나감) */
+    private String seenUrl, seenSrc, seenText;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable reader = this::readPage;
 
@@ -196,7 +206,7 @@ public class UsageInputActivity extends Activity {
             @Override
             public void onPageFinished(WebView v, String url) {
                 progress.setVisibility(View.GONE);
-                if (isUsagePage(url)) startReading();
+                if (isClaudePage(url)) startReading();
             }
 
             @Override
@@ -216,30 +226,48 @@ public class UsageInputActivity extends Activity {
             sawLogin = false;
             web.loadUrl(USAGE_URL);
         }
-        if (isUsagePage(url)) startReading();
+        if (isClaudePage(url)) startReading();
     }
 
-    private static boolean isUsagePage(String url) {
-        return url != null && url.startsWith(USAGE_URL);
+    /** 로그인 화면이 아닌 claude.ai 화면(사용량 페이지 주소가 바뀌어도 읽도록 주소는 따지지 않음) */
+    private static boolean isClaudePage(String url) {
+        return url != null && url.startsWith(ORIGIN + "/") && !isLoginPage(url);
     }
 
-    /** 사용량 페이지가 뜨면: 막대가 그려질 때까지 잠깐씩 글자를 보고 주간 사용량을 찾음 */
+    /** claude.ai 화면이 뜨면: 막대가 그려질 때까지 잠깐씩 글자를 보고 주간 사용량을 찾음 */
     private void startReading() {
         if (filled || userEdited) return;
         readTries = 0;
+        setLabel("현재 사용량", R.color.text_primary, 15, null);
         handler.removeCallbacks(reader);
         handler.postDelayed(reader, READ_EVERY);
     }
 
     private void readPage() {
-        if (filled || userEdited || isFinishing() || !isUsagePage(web.getUrl())) return;
+        if (filled || userEdited || isFinishing()) return;
+        final String url = web.getUrl();
+        if (!isClaudePage(url)) return; // 로그인 중: 로그인을 마치면 다시 시작
         web.evaluateJavascript(READ_TEXT, value -> {
             if (filled || userEdited || isDestroyed()) return;
-            Double p = PageUsage.weeklyPercent(decodeJs(value));
+            seenUrl = url;
+            seenSrc = null;
+            seenText = null;
+            String json = decodeJs(value);
+            if (json != null) {
+                try {
+                    JSONObject o = new JSONObject(json);
+                    seenSrc = o.optString("src");
+                    seenText = o.optString("text");
+                } catch (JSONException ignored) {
+                }
+            }
+            Double p = PageUsage.weeklyPercent(seenText);
             if (p != null) {
                 fill(p);
             } else if (++readTries < READ_MAX) {
                 handler.postDelayed(reader, READ_EVERY);
+            } else {
+                setLabel("못 가져옴 ⓘ", R.color.text_secondary, 13, v -> showWhy());
             }
         });
     }
@@ -250,8 +278,34 @@ public class UsageInputActivity extends Activity {
         et.setText(MainActivity.trim((float) p));
         et.requestFocus();
         et.selectAll();
-        label.setText("가져온 값");
-        label.setTextColor(getColor(R.color.accent));
+        setLabel("가져온 값", R.color.accent, 15, null);
+    }
+
+    private void setLabel(String text, int color, int sp, View.OnClickListener click) {
+        label.setText(text);
+        label.setTextColor(getColor(color));
+        label.setTextSize(sp);
+        label.setOnClickListener(click);
+        label.setClickable(click != null);
+    }
+
+    /** 못 가져왔을 때: 무엇을 읽었는지 보여 줌(캡처해서 보내 주면 문구에 맞춰 고칠 수 있게) */
+    private void showWhy() {
+        String text = seenText == null ? "" : seenText;
+        String anchor = PageUsage.anchor(text);
+        StringBuilder m = new StringBuilder()
+                .append("주소: ").append(seenUrl == null ? "(없음)" : seenUrl).append('\n')
+                .append("읽은 곳: ").append(seenSrc == null ? "(못 읽음)" : seenSrc).append('\n')
+                .append("기준 글자(모든 모델·주간 등): ").append(anchor == null ? "못 찾음" : "'" + anchor + "' 찾음")
+                .append('\n')
+                .append("% 숫자: ").append(PageUsage.percentCount(text)).append("개\n\n")
+                .append("읽은 글자:\n").append(text.length() > 1500 ? text.substring(0, 1500) + "…" : text);
+        new AlertDialog.Builder(this)
+                .setTitle("자동 입력이 안 된 이유")
+                .setMessage(m)
+                .setPositiveButton("다시 읽기", (d, w) -> startReading())
+                .setNegativeButton("닫기", null)
+                .show();
     }
 
     /** evaluateJavascript 결과(JSON 문자열 리터럴) → 글자. 문자열이 아니면 null */
