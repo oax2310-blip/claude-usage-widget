@@ -40,7 +40,7 @@
                 android:layout_marginStart="1dp"
                 android:includeFontPadding="false"
                 android:text="%"
-                android:textColor="@color/claude_pct"
+                android:textColor="@color/claude_fg"
                 android:textFontWeight="700"
                 android:textSize="14sp"
                 android:visibility="gone" />
@@ -78,7 +78,7 @@
                 android:layout_height="7dp"
                 android:layout_marginEnd="5dp"
                 android:importantForAccessibility="no"
-                android:src="@drawable/dot_clay" />
+                android:src="@drawable/dot_ok" />
 
             <TextView
                 android:id="@+id/w_top_label"

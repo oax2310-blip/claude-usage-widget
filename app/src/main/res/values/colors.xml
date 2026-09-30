@@ -15,10 +15,10 @@
     <color name="claude_fg">#141413</color>
     <color name="claude_sub">#67655E</color>
     <color name="claude_clay">#D97757</color>
-    <color name="claude_pct">#C4633F</color>
     <color name="claude_spare">#47D97757</color>
     <color name="claude_track">#E8E6DE</color>
     <color name="claude_over">#B8281F</color>
-    <color name="claude_ok_text">#CC6B4A</color>
+    <color name="claude_ok">#2E9E48</color>
+    <color name="claude_ok_text">#2E9E48</color>
     <color name="claude_warn_text">#B42318</color>
 </resources>

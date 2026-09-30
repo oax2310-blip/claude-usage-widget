@@ -116,7 +116,7 @@ public class UsageWidget extends AppWidgetProvider {
         if (!m.showHint) {
             boolean hasStatus = m.status != null;
             v.setViewVisibility(R.id.w_dot, hasStatus ? View.VISIBLE : View.GONE);
-            v.setImageViewResource(R.id.w_dot, m.statusOver ? R.drawable.dot_over : R.drawable.dot_clay);
+            v.setImageViewResource(R.id.w_dot, m.statusOver ? R.drawable.dot_over : R.drawable.dot_ok);
             v.setTextViewText(R.id.w_top_label, m.topLabel);
             v.setTextViewText(R.id.w_top_value, m.topValue);
             v.setViewVisibility(R.id.w_status, hasStatus ? View.VISIBLE : View.GONE);
