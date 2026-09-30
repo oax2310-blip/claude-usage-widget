@@ -66,6 +66,8 @@ public class UsageInputActivity extends Activity {
     private boolean sawLogin;
     /** 페이지에서 가져와 채웠는지 / 사용자가 직접 눌러 고쳤는지(그러면 더 채우지 않음) */
     private boolean filled, userEdited;
+    /** 읽는 중인지(화면 주소가 바뀌어도 기다린 시간을 처음부터 다시 세지 않게 — 그래서 실패 표시가 안 떴음) */
+    private boolean reading;
     private int readTries;
     /** 마지막으로 읽은 주소·읽은 곳·글자 — 못 가져왔을 때 '이유 보기'에 보여 줌(폰 밖으로 안 나감) */
     private String seenUrl, seenSrc, seenText;
@@ -236,7 +238,8 @@ public class UsageInputActivity extends Activity {
 
     /** claude.ai 화면이 뜨면: 막대가 그려질 때까지 잠깐씩 글자를 보고 주간 사용량을 찾음 */
     private void startReading() {
-        if (filled || userEdited) return;
+        if (filled || userEdited || reading) return;
+        reading = true;
         readTries = 0;
         setLabel("현재 사용량", R.color.text_primary, 15, null);
         handler.removeCallbacks(reader);
@@ -244,11 +247,17 @@ public class UsageInputActivity extends Activity {
     }
 
     private void readPage() {
-        if (filled || userEdited || isFinishing()) return;
         final String url = web.getUrl();
-        if (!isClaudePage(url)) return; // 로그인 중: 로그인을 마치면 다시 시작
+        // 로그인 중이면 멈췄다가 로그인을 마치면 다시 시작
+        if (filled || userEdited || isFinishing() || !isClaudePage(url)) {
+            reading = false;
+            return;
+        }
         web.evaluateJavascript(READ_TEXT, value -> {
-            if (filled || userEdited || isDestroyed()) return;
+            if (filled || userEdited || isDestroyed()) {
+                reading = false;
+                return;
+            }
             seenUrl = url;
             seenSrc = null;
             seenText = null;
@@ -263,10 +272,12 @@ public class UsageInputActivity extends Activity {
             }
             Double p = PageUsage.weeklyPercent(seenText);
             if (p != null) {
+                reading = false;
                 fill(p);
             } else if (++readTries < READ_MAX) {
                 handler.postDelayed(reader, READ_EVERY);
             } else {
+                reading = false;
                 setLabel("못 가져옴 ⓘ", R.color.text_secondary, 13, v -> showWhy());
             }
         });
