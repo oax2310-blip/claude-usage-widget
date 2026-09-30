@@ -206,7 +206,7 @@ public class MainActivity extends Activity {
         long now = System.currentTimeMillis();
         UsageCalc.Result r = store.compute(now);
 
-        tvDaily.setText(Fmt.pct(r.dailyBase));
+        tvDaily.setText(Fmt.today(r));
         if (!r.configured) {
             tvPace.setText("--");
             tvCountdown.setText("아래 1번에서 초기화 시각을 설정하세요");
@@ -225,7 +225,7 @@ public class MainActivity extends Activity {
 
         tvPaceLabel.setVisibility(View.VISIBLE);
         pbPace.setVisibility(View.VISIBLE);
-        tvPaceLabel.setText("초기화까지 남은 권장 " + Fmt.pct(r.paceRemaining));
+        tvPaceLabel.setText(Fmt.dayLine(r));
         pbPace.setProgress((int) Math.round(r.paceUsed * 10));
 
         tvUsageInfo.setVisibility(View.VISIBLE);

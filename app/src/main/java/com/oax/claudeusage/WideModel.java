@@ -28,19 +28,19 @@ final class WideModel {
 
     static WideModel of(UsageCalc.Result r) {
         WideModel m = new WideModel();
-        String daily = Fmt.pct(r.dailyBase);
         if (!r.configured) {
             m.paceNum = "--";
             m.showHint = true;
-            m.meta = "하루 권장 " + daily;
+            m.meta = "하루 권장 " + Fmt.pct(r.dailyBase);
             return m;
         }
+        String today = "오늘 " + Fmt.today(r);
         m.paceNum = Fmt.num(r.paceUsed);
         m.showPct = true;
         if (!r.hasUsage) {
             m.topLabel = "초기화까지 ";
             m.topValue = Fmt.duration(r.remainingMs);
-            m.meta = "하루 " + daily + " · " + Fmt.dateShort(r.resetAt);
+            m.meta = today + " · " + Fmt.dateShort(r.resetAt) + " 초기화";
             m.barSecondary = bar(r.paceUsed);
             return m;
         }
@@ -48,7 +48,7 @@ final class WideModel {
         m.topValue = Fmt.pct(r.used);
         m.statusOver = r.paceDiffAtInput < 0;
         m.status = Fmt.paceStatus(r.paceDiffAtInput);
-        m.meta = "하루 " + daily + " · " + Fmt.duration(r.remainingMs) + " 후 초기화";
+        m.meta = today + " · " + Fmt.duration(r.remainingMs) + " 후 초기화";
         // 막대는 지금 시점 기준: 권장 누적까지는 클레이, 넘친 만큼은 빨강
         if (r.used <= r.paceUsed) {
             m.barProgress = bar(r.used);

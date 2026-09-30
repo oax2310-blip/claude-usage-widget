@@ -1,10 +1,22 @@
 package com.oax.claudeusage;
 
-/** 주간 한도 페이스 계산. 안드로이드 의존성 없음(단위 테스트 가능). */
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+
+/**
+ * 주간 한도 페이스 계산. 안드로이드 의존성 없음(단위 테스트 가능).
+ *
+ * 권장 누적은 하루 단위로 늘어난다: 매일 오전 3시(DAY_START_HOUR)에 그날 몫이 한 번에 더해진다.
+ * 초기화 시각이 오전 3시가 아니면 첫날·마지막날은 조각난 날이 되어 길이에 비례해 몫을 나눠 갖는다.
+ * 예) 초기화 토 오후 3시, 주기 7일 → 토 15시~일 3시(12시간, 7.1%) + 하루 14.3% × 6 + 토 3시~15시(12시간, 7.1%) = 8일
+ */
 public final class UsageCalc {
     public static final long MINUTE = 60_000L;
     public static final long HOUR = 60 * MINUTE;
     public static final long DAY = 24 * HOUR;
+    /** 하루가 바뀌는 시각(오전 3시) */
+    public static final int DAY_START_HOUR = 3;
 
     private UsageCalc() {}
 
@@ -17,10 +29,21 @@ public final class UsageCalc {
         public long resetAt;
         public long windowStart;
         public long remainingMs;
-        /** 지금까지 써도 되는 권장 누적(%) = 경과 시간 비율 × 100 */
+        /** 지금까지 써도 되는 권장 누적(%) = 오늘까지 지급된 몫의 합 */
         public double paceUsed;
-        /** 지금부터 초기화까지 남은 권장량(%) = 남은 시간 비율 × 100 */
+        /** 초기화까지 아직 지급되지 않은 권장량(%) */
         public double paceRemaining;
+
+        /** 이번 주기의 날 수(조각난 첫날·마지막날 포함) */
+        public int dayCount;
+        /** 오늘이 몇 번째 날인지(1부터, 주기 시작 전이면 0) */
+        public int dayIndex;
+        /** 오늘 몫(%) — 조각난 날은 길이에 비례해 줄어듦 */
+        public double todayAllot;
+        /** 다음 몫이 더해지는 시각(마지막 날이면 0) */
+        public long nextGrantAt;
+        /** 다음에 더해질 몫(%) */
+        public double nextAllot;
 
         /** 이번 주기 안에 입력한 실제 사용량이 있는지 */
         public boolean hasUsage;
@@ -43,13 +66,20 @@ public final class UsageCalc {
         return resetAt + n * periodMs;
     }
 
-    /** 시각 t에서의 권장 누적(%) */
-    public static double paceAt(long resetAt, long periodMs, long t) {
-        long start = resetAt - periodMs;
-        double f = (double) (t - start) / (double) periodMs;
-        if (f < 0) f = 0;
-        if (f > 1) f = 1;
-        return f * 100.0;
+    /** t 다음(t 제외)으로 오는 하루 경계(오전 3시) */
+    public static long nextDayStart(long t, ZoneId zone) {
+        LocalDate d = Instant.ofEpochMilli(t).atZone(zone).toLocalDate();
+        long b = d.atTime(DAY_START_HOUR, 0).atZone(zone).toInstant().toEpochMilli();
+        if (b > t) return b;
+        return d.plusDays(1).atTime(DAY_START_HOUR, 0).atZone(zone).toInstant().toEpochMilli();
+    }
+
+    /** 시각 t에서의 권장 누적(%) = 주기 시작부터 t가 속한 날의 끝까지의 비율 × 100 */
+    public static double paceAt(long windowStart, long resetAt, long t, ZoneId zone) {
+        if (t < windowStart) return 0.0;
+        if (t >= resetAt) return 100.0;
+        long end = Math.min(nextDayStart(t, zone), resetAt);
+        return 100.0 * (end - windowStart) / (resetAt - windowStart);
     }
 
     /**
@@ -57,6 +87,11 @@ public final class UsageCalc {
      * @param usedAt 사용량을 입력한 시각
      */
     public static Result compute(long resetAt, double periodDays, long now, double used, long usedAt) {
+        return compute(resetAt, periodDays, now, used, usedAt, ZoneId.systemDefault());
+    }
+
+    public static Result compute(long resetAt, double periodDays, long now, double used, long usedAt,
+                                 ZoneId zone) {
         Result r = new Result();
         if (!(periodDays > 0)) periodDays = 7;
         long periodMs = Math.round(periodDays * DAY);
@@ -67,20 +102,42 @@ public final class UsageCalc {
         r.resetAt = rollForward(resetAt, periodMs, now);
         r.windowStart = r.resetAt - periodMs;
         r.remainingMs = Math.max(0, r.resetAt - now);
-        r.paceUsed = paceAt(r.resetAt, periodMs, now);
+        r.paceUsed = paceAt(r.windowStart, r.resetAt, now, zone);
         r.paceRemaining = 100.0 - r.paceUsed;
+        days(r, now, zone);
 
         boolean inWindow = usedAt >= r.windowStart || r.windowStart > now;
         r.hasUsage = !Double.isNaN(used) && used >= 0 && usedAt > 0 && inWindow && usedAt <= now + MINUTE;
         if (r.hasUsage) {
             r.used = Math.min(100.0, used);
             r.usageAgeMs = Math.max(0, now - usedAt);
-            r.paceDiffAtInput = paceAt(r.resetAt, periodMs, usedAt) - r.used;
+            r.paceDiffAtInput = paceAt(r.windowStart, r.resetAt, usedAt, zone) - r.used;
             r.leftLimit = Math.max(0.0, 100.0 - r.used);
             double days = (double) r.remainingMs / (double) DAY;
             r.lessThanDay = days < 1.0;
             r.dailyAdjusted = r.lessThanDay ? r.leftLimit : r.leftLimit / days;
         }
         return r;
+    }
+
+    /** 주기를 오전 3시 경계로 나눈 날 수, 오늘이 몇째 날인지, 오늘·다음 몫 */
+    private static void days(Result r, long now, ZoneId zone) {
+        double period = r.resetAt - r.windowStart;
+        long start = r.windowStart;
+        r.dayCount = 0;
+        r.dayIndex = now < start ? 0 : -1;
+        while (start < r.resetAt) {
+            long end = Math.min(nextDayStart(start, zone), r.resetAt);
+            r.dayCount++;
+            double allot = 100.0 * (end - start) / period;
+            if (r.dayIndex < 0 && now < end) {
+                r.dayIndex = r.dayCount;
+                r.todayAllot = allot;
+            } else if (r.dayIndex >= 0 && r.nextGrantAt == 0 && start > now) {
+                r.nextGrantAt = start;
+                r.nextAllot = allot;
+            }
+            start = end;
+        }
     }
 }
