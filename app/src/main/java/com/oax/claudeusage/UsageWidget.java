@@ -11,17 +11,21 @@ import android.util.ArrayMap;
 import android.util.SizeF;
 import android.view.View;
 import android.widget.RemoteViews;
+import android.widget.Toast;
 
 import java.util.Map;
 
 /**
  * 홈 화면 위젯. 30분마다 + 매일 오전 3시(오늘 몫이 더해질 때)·초기화 시각에 자동 갱신,
  * ↻ 누르면 즉시 갱신, 나머지 부분을 누르면 앱 열림.
+ * claude.ai에 로그인해 뒀으면 ↻ 때는 바로, 자동 갱신 때는 한동안 안 읽었을 때만 사용량도 새로 읽음.
  * 한 줄 위젯은 왼쪽 사용량 숫자를 누르면 앱을 열지 않고 바로 사용량 입력 창이 뜸.
  * 크기에 따라 작은 / 한 줄(5x1) / 큰 레이아웃 중 알맞은 것이 표시됨.
  */
 public class UsageWidget extends AppWidgetProvider {
     static final String ACTION_REFRESH = "com.oax.claudeusage.REFRESH";
+    /** ↻ 누름: 다시 그리기 + (로그인해 뒀으면) 사용량 새로 읽기 */
+    static final String ACTION_SYNC = "com.oax.claudeusage.SYNC";
 
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
@@ -32,12 +36,31 @@ public class UsageWidget extends AppWidgetProvider {
     public void onReceive(Context ctx, Intent intent) {
         super.onReceive(ctx, intent);
         String a = intent.getAction();
-        if (ACTION_REFRESH.equals(a)
+        boolean tap = ACTION_SYNC.equals(a);
+        if (tap || ACTION_REFRESH.equals(a)
                 || Intent.ACTION_TIME_CHANGED.equals(a)
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(a)
                 || Intent.ACTION_MY_PACKAGE_REPLACED.equals(a)) {
             updateAll(ctx);
         }
+        if (tap || ACTION_REFRESH.equals(a) || AppWidgetManager.ACTION_APPWIDGET_UPDATE.equals(a)) {
+            sync(ctx, tap);
+        }
+    }
+
+    /** claude.ai에서 사용량 읽기(로그인해 뒀을 때만). 읽는 동안 ↻ 자리에 표시, 끝나면 다시 그림 */
+    private void sync(Context ctx, boolean tap) {
+        Store s = new Store(ctx);
+        if (!s.linked()) return;
+        if (!tap && !s.syncDue(System.currentTimeMillis(), UsageSync.AUTO_INTERVAL)) return;
+        Context app = ctx.getApplicationContext();
+        PendingResult pending = goAsync();
+        UsageSync.run(app, (ok, err) -> {
+            updateAll(app);
+            if (tap && !ok) Toast.makeText(app, "사용량 읽기 실패: " + err, Toast.LENGTH_LONG).show();
+            pending.finish();
+        });
+        updateAll(app);
     }
 
     static void updateAll(Context ctx) {
@@ -50,8 +73,10 @@ public class UsageWidget extends AppWidgetProvider {
 
     private static void update(Context ctx, AppWidgetManager mgr, int[] ids) {
         long now = System.currentTimeMillis();
-        UsageCalc.Result r = new Store(ctx).compute(now);
-        for (int id : ids) mgr.updateAppWidget(id, build(ctx, r, now));
+        Store s = new Store(ctx);
+        UsageCalc.Result r = s.compute(now);
+        boolean auto = s.usedAuto();
+        for (int id : ids) mgr.updateAppWidget(id, build(ctx, r, now, auto));
         scheduleNextChange(ctx, r);
     }
 
@@ -71,15 +96,15 @@ public class UsageWidget extends AppWidgetProvider {
         am.setWindow(AlarmManager.RTC, r.nextChangeAt, 10 * UsageCalc.MINUTE, pi);
     }
 
-    private static RemoteViews build(Context ctx, UsageCalc.Result r, long now) {
+    private static RemoteViews build(Context ctx, UsageCalc.Result r, long now, boolean auto) {
         RemoteViews small = new RemoteViews(ctx.getPackageName(), R.layout.widget_small);
         RemoteViews wide = new RemoteViews(ctx.getPackageName(), R.layout.widget_wide);
         RemoteViews full = new RemoteViews(ctx.getPackageName(), R.layout.widget_usage);
         RemoteViews fullWide = new RemoteViews(ctx.getPackageName(), R.layout.widget_usage);
-        fill(small, r, now, false);
+        fill(small, r, now, false, auto);
         fillWide(wide, WideModel.of(r), now);
-        fill(full, r, now, true);
-        fill(fullWide, r, now, true);
+        fill(full, r, now, true, auto);
+        fill(fullWide, r, now, true, auto);
         for (RemoteViews v : new RemoteViews[] {small, wide, full, fullWide}) bindClicks(ctx, v);
         bindUsageInput(ctx, wide);
         // 시스템이 위젯 크기에 맞는(들어가면서 가장 가까운) 레이아웃을 고름:
@@ -92,9 +117,9 @@ public class UsageWidget extends AppWidgetProvider {
         return new RemoteViews(m);
     }
 
-    private static void fill(RemoteViews v, UsageCalc.Result r, long now, boolean full) {
+    private static void fill(RemoteViews v, UsageCalc.Result r, long now, boolean full, boolean auto) {
         v.setTextViewText(R.id.w_daily, Fmt.today(r));
-        v.setTextViewText(R.id.w_refresh, "↻ " + Fmt.clock(now));
+        v.setTextViewText(R.id.w_refresh, "↻ " + (UsageSync.busy() ? "읽는 중" : Fmt.clock(now)));
         if (!r.configured) {
             v.setTextViewText(R.id.w_pace, "--");
             v.setTextViewText(R.id.w_countdown, "탭해서 초기화 시각을 설정하세요");
@@ -117,7 +142,7 @@ public class UsageWidget extends AppWidgetProvider {
         if (r.hasUsage) {
             v.setViewVisibility(R.id.w_used_col, View.VISIBLE);
             v.setTextViewText(R.id.w_used, Fmt.pct(r.used));
-            String line = Fmt.usageLine(r) + " (" + Fmt.age(r.usageAgeMs) + " 입력)";
+            String line = Fmt.usageLine(r) + " (" + Fmt.age(r.usageAgeMs) + (auto ? " 읽음)" : " 입력)");
             boolean over = r.paceDiff < 0;
             v.setTextViewText(over ? R.id.w_usage_over : R.id.w_usage_ok, line);
             v.setViewVisibility(R.id.w_usage_ok, over ? View.GONE : View.VISIBLE);
@@ -156,7 +181,7 @@ public class UsageWidget extends AppWidgetProvider {
         v.setColorStateList(R.id.w_bar, "setSecondaryProgressTintList",
                 m.barOver ? R.color.claude_over : spare ? R.color.claude_spare : R.color.claude_pace);
         v.setTextViewText(R.id.w_meta, m.meta);
-        v.setTextViewText(R.id.w_refresh_time, Fmt.clock(now));
+        v.setTextViewText(R.id.w_refresh_time, UsageSync.busy() ? "…" : Fmt.clock(now));
     }
 
     private static void bindClicks(Context ctx, RemoteViews v) {
@@ -166,7 +191,7 @@ public class UsageWidget extends AppWidgetProvider {
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         v.setOnClickPendingIntent(R.id.w_root, piOpen);
 
-        Intent refresh = new Intent(ctx, UsageWidget.class).setAction(ACTION_REFRESH);
+        Intent refresh = new Intent(ctx, UsageWidget.class).setAction(ACTION_SYNC);
         PendingIntent piRefresh = PendingIntent.getBroadcast(ctx, 1, refresh,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         v.setOnClickPendingIntent(R.id.w_refresh, piRefresh);

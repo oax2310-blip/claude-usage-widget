@@ -49,4 +49,6 @@ android {
 
 dependencies {
     testImplementation 'junit:junit:4.13.2'
+    // 단위 테스트에서 org.json 실제 구현(android.jar 쪽은 빈 껍데기)
+    testImplementation 'org.json:json:20250517'
 }

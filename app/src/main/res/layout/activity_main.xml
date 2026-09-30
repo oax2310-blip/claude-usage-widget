@@ -156,6 +156,47 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
+        <!-- 자동 읽기: 앱 안에서 claude.ai 로그인 -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="자동으로 읽기 (Claude 로그인)"
+            android:textColor="@color/text_primary"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_sync"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_link"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp" />
+
+            <Button
+                android:id="@+id/btn_unlink"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="연결 해제"
+                android:visibility="gone" />
+        </LinearLayout>
+
         <!-- 1. 초기화 시각 -->
         <TextView
             android:layout_width="wrap_content"
@@ -170,7 +211,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Claude 설정 → 사용량에 나오는 주간 한도 재설정 시각을 넣어 주세요. 지나면 자동으로 다음 주기로 넘어가요."
+            android:text="Claude 설정 → 사용량에 나오는 주간 한도 재설정 시각을 넣어 주세요. 지나면 자동으로 다음 주기로 넘어가요. 로그인해 두면 자동으로 채워져요."
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
 
@@ -228,7 +269,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="넣으면 권장 페이스 대비 여유/초과와 남은 기간 하루 권장량을 보여줘요. 초기화되면 자동으로 지워져요."
+            android:text="넣으면 권장 페이스 대비 여유/초과와 남은 기간 하루 권장량을 보여줘요. 초기화되면 자동으로 지워져요. 로그인해 두면 자동으로 읽어요(직접 넣은 값은 다음에 읽을 때 바뀌어요)."
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
 
@@ -278,7 +319,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:lineSpacingExtra="3dp"
-            android:text="· 하루 권장량 = 100% ÷ 초기화 주기(7일이면 14.3%)\n· 매일 오전 3시에 그날 몫이 권장 누적에 한 번에 더해져요\n· 초기화 시각이 오전 3시가 아니면 첫날·마지막날이 길이에 비례해 하루 몫을 나눠 가져요(예: 토 오후 3시 → 8일, 첫날·마지막날 7.1%씩)\n· 위젯 추가: 홈 화면 빈 곳 길게 누르기 → 위젯 → Claude 사용량\n· 위젯은 30분마다 자동 갱신, ↻ 누르면 즉시 갱신\n· 새 버전이 나오면 맨 위에 업데이트 버튼이 떠요"
+            android:text="· 하루 권장량 = 100% ÷ 초기화 주기(7일이면 14.3%)\n· 매일 오전 3시에 그날 몫이 권장 누적에 한 번에 더해져요\n· 초기화 시각이 오전 3시가 아니면 첫날·마지막날이 길이에 비례해 하루 몫을 나눠 가져요(예: 토 오후 3시 → 8일, 첫날·마지막날 7.1%씩)\n· 위젯 추가: 홈 화면 빈 곳 길게 누르기 → 위젯 → Claude 사용량\n· 위젯은 30분마다 자동 갱신, ↻ 누르면 즉시 갱신(로그인해 두면 사용량도 새로 읽어요)\n· claude.ai 로그인은 이 앱 안에만 저장되고, 사용량을 읽을 때 claude.ai에만 쓰여요\n· 새 버전이 나오면 맨 위에 업데이트 버튼이 떠요"
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
 
