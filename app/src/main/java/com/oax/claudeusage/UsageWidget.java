@@ -126,10 +126,13 @@ public class UsageWidget extends AppWidgetProvider {
         }
         v.setProgressBar(R.id.w_bar, WideModel.BAR_MAX, m.barProgress, false);
         v.setInt(R.id.w_bar, "setSecondaryProgress", m.barSecondary);
-        // 보조 진행값: 초과 = 빨강, 여유 = 연한 초록, 사용량 입력 전 권장 누적 = 반투명 클레이
+        // 여유: 사용 = 초록, 여유 = 연한 초록 / 초과: 권장 누적까지 클레이, 넘친 만큼 빨강
+        // 사용량 입력 전: 권장 누적 = 반투명 클레이
+        boolean spare = m.status != null && !m.barOver;
+        v.setColorStateList(R.id.w_bar, "setProgressTintList",
+                spare ? R.color.claude_ok_bar : R.color.claude_clay);
         v.setColorStateList(R.id.w_bar, "setSecondaryProgressTintList",
-                m.barOver ? R.color.claude_over
-                        : m.status != null ? R.color.claude_spare : R.color.claude_pace);
+                m.barOver ? R.color.claude_over : spare ? R.color.claude_spare : R.color.claude_pace);
         v.setTextViewText(R.id.w_meta, m.meta);
         v.setTextViewText(R.id.w_refresh_time, Fmt.clock(now));
     }
