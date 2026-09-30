@@ -6,6 +6,20 @@ import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 public class PageUsageTest {
+    /** 실제 폰 화면(Pro, 2026-10) 그대로 */
+    @Test
+    public void realKoreanProPage() {
+        String page = "설정\n일반\n계정\n개인정보보호\n결제\n사용량\n사용량\nPro\n"
+                + "주의하세요. 이 속도라면 토요일 재설정 전에 사용량이 소진됩니다. 소진 예상 시점: 내일 저녁\n"
+                + "플랜 업그레이드\n사용량 추가 구매\n"
+                + "현재 세션\n오전 10:00에 재설정\n62% 사용됨\n"
+                + "이번 주\n재설정: (토요일) 오후 3:00\n77% 사용됨\n제한 초기화";
+        assertEquals(77.0, PageUsage.weeklyPercent(page), 1e-9);
+        assertEquals("이번 주", PageUsage.anchor(page));
+        // 웹 글자의 줄바꿈 없는 공백(&nbsp;)
+        assertEquals(77.0, PageUsage.weeklyPercent("현재 세션\n62%\n이번\u00A0주\n77\u00A0% 사용됨"), 1e-9);
+    }
+
     @Test
     public void koreanPageTakesAllModelsNotSession() {
         String page = "설정\n일반\n계정\n개인정보보호\n결제\n사용량\n사용량 Pro\n"
