@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 한 줄(5x1) 위젯: 왼쪽 권장 누적 · 가운데 사용량 + 막대 + 하루·초기화 · 오른쪽 새로고침 -->
+<!-- 한 줄(5x1) 위젯: 왼쪽 현재 사용량(누르면 바로 입력) · 가운데 권장 누적 + 막대 + 하루·초기화 · 오른쪽 새로고침 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
@@ -10,6 +10,7 @@
     android:paddingEnd="6dp">
 
     <LinearLayout
+        android:id="@+id/w_used_box"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical">
@@ -20,7 +21,7 @@
             android:orientation="horizontal">
 
             <TextView
-                android:id="@+id/w_pace_num"
+                android:id="@+id/w_used_num"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFeatureSettings="tnum"
@@ -33,7 +34,7 @@
                 android:textSize="26sp" />
 
             <TextView
-                android:id="@+id/w_pace_pct"
+                android:id="@+id/w_used_pct"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="1dp"
@@ -46,11 +47,12 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/w_used_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:maxLines="1"
-            android:text="권장 누적"
+            android:text="사용량 입력"
             android:textColor="@color/claude_sub"
             android:textSize="11sp" />
     </LinearLayout>
@@ -84,7 +86,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:maxLines="1"
-                android:text="사용 "
+                android:text="권장 "
                 android:textColor="@color/claude_sub"
                 android:textSize="13sp" />
 

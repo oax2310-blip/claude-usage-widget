@@ -15,6 +15,7 @@ import java.util.Map;
 
 /**
  * 홈 화면 위젯. 30분마다 자동 갱신, ↻ 누르면 즉시 갱신, 나머지 부분을 누르면 앱 열림.
+ * 한 줄 위젯은 왼쪽 사용량 숫자를 누르면 앱을 열지 않고 바로 사용량 입력 창이 뜸.
  * 크기에 따라 작은 / 한 줄(5x1) / 큰 레이아웃 중 알맞은 것이 표시됨.
  */
 public class UsageWidget extends AppWidgetProvider {
@@ -61,6 +62,7 @@ public class UsageWidget extends AppWidgetProvider {
         fill(full, r, now, true);
         fill(fullWide, r, now, true);
         for (RemoteViews v : new RemoteViews[] {small, wide, full, fullWide}) bindClicks(ctx, v);
+        bindUsageInput(ctx, wide);
         // 시스템이 위젯 크기에 맞는(들어가면서 가장 가까운) 레이아웃을 고름:
         // 폭 280dp 이상 한 줄 높이 → 한 줄, 두 줄 이상 → 큰 레이아웃
         Map<SizeF, RemoteViews> m = new ArrayMap<>();
@@ -109,8 +111,9 @@ public class UsageWidget extends AppWidgetProvider {
     }
 
     private static void fillWide(RemoteViews v, WideModel m, long now) {
-        v.setTextViewText(R.id.w_pace_num, m.paceNum);
-        v.setViewVisibility(R.id.w_pace_pct, m.showPct ? View.VISIBLE : View.GONE);
+        v.setTextViewText(R.id.w_used_num, m.usedNum);
+        v.setViewVisibility(R.id.w_used_pct, m.showPct ? View.VISIBLE : View.GONE);
+        v.setTextViewText(R.id.w_used_label, m.usedLabel);
         v.setViewVisibility(R.id.w_hint, m.showHint ? View.VISIBLE : View.GONE);
         v.setViewVisibility(R.id.w_top_row, m.showHint ? View.GONE : View.VISIBLE);
         if (!m.showHint) {
@@ -148,5 +151,14 @@ public class UsageWidget extends AppWidgetProvider {
         PendingIntent piRefresh = PendingIntent.getBroadcast(ctx, 1, refresh,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         v.setOnClickPendingIntent(R.id.w_refresh, piRefresh);
+    }
+
+    /** 한 줄 위젯: 왼쪽 사용량 숫자를 누르면 사용량 입력 창 */
+    private static void bindUsageInput(Context ctx, RemoteViews v) {
+        Intent input = new Intent(ctx, UsageInputActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pi = PendingIntent.getActivity(ctx, 2, input,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        v.setOnClickPendingIntent(R.id.w_used_box, pi);
     }
 }

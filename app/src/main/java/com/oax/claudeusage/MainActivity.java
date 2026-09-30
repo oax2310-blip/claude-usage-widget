@@ -252,7 +252,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static Float parse(String s) {
+    static Float parse(String s) {
         s = s.trim().replace(',', '.').replace("%", "");
         if (s.isEmpty()) return null;
         try {
@@ -263,7 +263,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static String trim(float v) {
+    static String trim(float v) {
         if (v == Math.rint(v)) return String.valueOf((int) v);
         return String.format(Locale.KOREA, "%.1f", v);
     }
