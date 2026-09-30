@@ -10,6 +10,10 @@ import android.graphics.Color;
 import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
@@ -20,25 +24,43 @@ import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import org.json.JSONException;
+import org.json.JSONTokener;
 
 /**
  * 사용량 입력 팝업(한 줄 위젯의 숫자를 누르거나 앱에서 열기): 위쪽에 claude.ai 설정 → 사용량 페이지를 띄워
- * 직접 보면서 아래에 현재 사용량(%)을 넣는다. 페이지는 보여주기만 하고 앱이 내용을 읽지 않는다
- * (자동 접근·스크래핑은 Claude 약관 위반). claude.ai 로그인은 이 앱의 WebView에만 저장되고
- * 백업에서 빠지며, '로그아웃'으로 지울 수 있다.
+ * 직접 보면서 아래에 현재 사용량(%)을 넣는다. 팝업이 떠 있는 동안에만, 화면에 그려진 페이지 글자에서
+ * 주간 사용량을 찾아 입력 칸에 미리 채우고(폰 안에서만 읽고 서버에 따로 요청하지 않음), 저장은 직접 누른다.
+ * 앱이 알아서 claude.ai에 접속하지는 않는다(자동 접근은 Claude 약관 위반).
+ * claude.ai 로그인은 이 앱의 WebView에만 저장되고 백업에서 빠지며, '로그아웃'으로 지울 수 있다.
  */
 public class UsageInputActivity extends Activity {
     private static final String ORIGIN = "https://claude.ai";
     private static final String USAGE_URL = ORIGIN + "/settings/usage";
+    /** 떠 있는 설정 창(없으면 페이지 전체)의 글자 — 읽기만 하고 페이지는 건드리지 않음 */
+    private static final String READ_TEXT = "(function(){var d=document.querySelector('[role=dialog]')"
+            + "||document.body;return d?d.innerText:'';})()";
+    /** 사용량 막대가 그려질 때까지 이 간격으로 이 횟수만큼(약 12초) 다시 봄 */
+    private static final long READ_EVERY = 600;
+    private static final int READ_MAX = 20;
 
     private Store store;
     private EditText et;
     private WebView web;
     private View loginRow, progress;
+    private TextView label;
     /** 로그인 화면을 거쳤는지(로그인을 마치고 다른 화면으로 가면 사용량 페이지로 다시 보냄) */
     private boolean sawLogin;
-    private boolean keyboardShown;
+    /** 페이지에서 가져와 채웠는지 / 사용자가 직접 눌러 고쳤는지(그러면 더 채우지 않음) */
+    private boolean filled, userEdited;
+    private int readTries;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable reader = this::readPage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,11 +79,14 @@ public class UsageInputActivity extends Activity {
             v.setPadding(pad + b.left, pad + b.top, pad + b.right, pad + b.bottom);
             return insets;
         });
-        // 열리자마자 입력 칸에 커서 + 기존 값 전체 선택 + 숫자 키보드(페이지는 위쪽에 남음)
+        // 열리자마자 입력 칸에 커서 + 기존 값 전체 선택. 폰 키보드는 띄우지 않고 아래 한 줄 숫자 키로 입력
+        // (폰 키보드가 화면 절반을 가려 위쪽 사용량 페이지가 한 번에 안 보였음)
         et = findViewById(R.id.in_used);
+        et.setShowSoftInputOnFocus(false);
         if (r.hasUsage) et.setText(MainActivity.trim((float) r.used));
         et.requestFocus();
         et.selectAll();
+        buildPad(findViewById(R.id.in_pad));
         et.setOnEditorActionListener((v, id, e) -> {
             if (id == EditorInfo.IME_ACTION_DONE) { save(); return true; }
             return false;
@@ -78,6 +103,7 @@ public class UsageInputActivity extends Activity {
         findViewById(R.id.in_close).setOnClickListener(v -> finish());
         findViewById(R.id.in_logout).setOnClickListener(v -> confirmLogout());
         findViewById(R.id.in_paste).setOnClickListener(v -> pasteLink());
+        label = findViewById(R.id.in_label);
         loginRow = findViewById(R.id.in_login_row);
         progress = findViewById(R.id.in_progress);
 
@@ -86,9 +112,59 @@ public class UsageInputActivity extends Activity {
         web.loadUrl(USAGE_URL);
     }
 
+    /** 한 줄 숫자 키: 1~9, 0, ⌫ */
+    private void buildPad(LinearLayout pad) {
+        int gap = Math.round(2 * getResources().getDisplayMetrics().density);
+        String[] keys = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "⌫"};
+        for (String k : keys) {
+            View b;
+            if ("⌫".equals(k)) {
+                ImageView img = new ImageView(this);
+                img.setImageResource(R.drawable.ic_backspace);
+                img.setScaleType(ImageView.ScaleType.CENTER);
+                img.setContentDescription("한 글자 지우기");
+                b = img;
+            } else {
+                TextView t = new TextView(this);
+                t.setText(k);
+                t.setGravity(Gravity.CENTER);
+                t.setTextSize(18);
+                t.setTextColor(getColor(R.color.text_primary));
+                b = t;
+            }
+            b.setBackgroundResource(R.drawable.key_bg);
+            b.setOnClickListener(v -> press(k));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+            lp.setMargins(gap, 0, gap, 0);
+            pad.addView(b, lp);
+        }
+    }
+
+    /** 키보드처럼: 선택된 부분(처음엔 기존 값 전체)을 바꾸거나 커서 자리에 넣기 */
+    private void press(String k) {
+        userEdited = true;
+        if (!et.hasFocus()) et.requestFocus();
+        Editable t = et.getText();
+        int a = Math.max(0, Math.min(et.getSelectionStart(), et.getSelectionEnd()));
+        int b = Math.max(0, Math.max(et.getSelectionStart(), et.getSelectionEnd()));
+        int pos = a;
+        if (!"⌫".equals(k)) {
+            int rest = t.length() - (b - a);
+            t.replace(a, b, k);
+            pos = a + (t.length() - rest); // 최대 글자 수에 막히면 안 들어감
+        } else if (a != b) {
+            t.delete(a, b);
+        } else if (a > 0) {
+            t.delete(a - 1, a);
+            pos = a - 1;
+        }
+        et.setSelection(Math.min(pos, t.length()));
+    }
+
     private void setupWeb() {
         WebSettings s = web.getSettings();
-        // claude.ai 화면을 그리는 데 필요(앱이 페이지에 스크립트를 넣거나 내용을 읽지는 않음)
+        // claude.ai 화면을 그리는 데 필요(앱은 떠 있는 화면의 글자를 읽기만 하고 페이지를 바꾸지 않음)
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         CookieManager cm = CookieManager.getInstance();
@@ -117,6 +193,7 @@ public class UsageInputActivity extends Activity {
             @Override
             public void onPageFinished(WebView v, String url) {
                 progress.setVisibility(View.GONE);
+                if (isUsagePage(url)) startReading();
             }
 
             @Override
@@ -135,6 +212,53 @@ public class UsageInputActivity extends Activity {
         } else if (sawLogin && url != null && url.startsWith(ORIGIN + "/") && !url.startsWith(USAGE_URL)) {
             sawLogin = false;
             web.loadUrl(USAGE_URL);
+        }
+        if (isUsagePage(url)) startReading();
+    }
+
+    private static boolean isUsagePage(String url) {
+        return url != null && url.startsWith(USAGE_URL);
+    }
+
+    /** 사용량 페이지가 뜨면: 막대가 그려질 때까지 잠깐씩 글자를 보고 주간 사용량을 찾음 */
+    private void startReading() {
+        if (filled || userEdited) return;
+        readTries = 0;
+        handler.removeCallbacks(reader);
+        handler.postDelayed(reader, READ_EVERY);
+    }
+
+    private void readPage() {
+        if (filled || userEdited || isFinishing() || !isUsagePage(web.getUrl())) return;
+        web.evaluateJavascript(READ_TEXT, value -> {
+            if (filled || userEdited || isDestroyed()) return;
+            Double p = PageUsage.weeklyPercent(decodeJs(value));
+            if (p != null) {
+                fill(p);
+            } else if (++readTries < READ_MAX) {
+                handler.postDelayed(reader, READ_EVERY);
+            }
+        });
+    }
+
+    /** 찾은 값을 입력 칸에 채우고 선택(맞으면 저장, 아니면 바로 눌러 고치면 됨) */
+    private void fill(double p) {
+        filled = true;
+        et.setText(MainActivity.trim((float) p));
+        et.requestFocus();
+        et.selectAll();
+        label.setText("가져온 값");
+        label.setTextColor(getColor(R.color.accent));
+    }
+
+    /** evaluateJavascript 결과(JSON 문자열 리터럴) → 글자. 문자열이 아니면 null */
+    private static String decodeJs(String value) {
+        if (value == null) return null;
+        try {
+            Object o = new JSONTokener(value).nextValue();
+            return o instanceof String ? (String) o : null;
+        } catch (JSONException e) {
+            return null;
         }
     }
 
@@ -177,16 +301,6 @@ public class UsageInputActivity extends Activity {
     }
 
     @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        // stateAlwaysVisible로 안 뜨는 기기 대비: 처음 창이 뜰 때 입력 칸이 포커스면 키보드 올리기
-        if (hasFocus && !keyboardShown && et.hasFocus()) {
-            keyboardShown = true;
-            getWindow().getInsetsController().show(WindowInsets.Type.ime());
-        }
-    }
-
-    @Override
     protected void onPause() {
         super.onPause();
         CookieManager.getInstance().flush();
@@ -194,6 +308,7 @@ public class UsageInputActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        handler.removeCallbacks(reader);
         web.destroy();
         super.onDestroy();
     }

@@ -35,7 +35,7 @@
             android:exported="false"
             android:taskAffinity=""
             android:theme="@style/InputTheme"
-            android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
+            android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
 
         <receiver
             android:name=".UsageWidget"
