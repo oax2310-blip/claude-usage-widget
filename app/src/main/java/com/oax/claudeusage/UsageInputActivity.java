@@ -10,6 +10,8 @@ import android.graphics.Color;
 import android.graphics.Insets;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
@@ -20,6 +22,9 @@ import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 /**
@@ -38,7 +43,6 @@ public class UsageInputActivity extends Activity {
     private View loginRow, progress;
     /** 로그인 화면을 거쳤는지(로그인을 마치고 다른 화면으로 가면 사용량 페이지로 다시 보냄) */
     private boolean sawLogin;
-    private boolean keyboardShown;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,11 +61,14 @@ public class UsageInputActivity extends Activity {
             v.setPadding(pad + b.left, pad + b.top, pad + b.right, pad + b.bottom);
             return insets;
         });
-        // 열리자마자 입력 칸에 커서 + 기존 값 전체 선택 + 숫자 키보드(페이지는 위쪽에 남음)
+        // 열리자마자 입력 칸에 커서 + 기존 값 전체 선택. 폰 키보드는 띄우지 않고 아래 한 줄 숫자 키로 입력
+        // (폰 키보드가 화면 절반을 가려 위쪽 사용량 페이지가 한 번에 안 보였음)
         et = findViewById(R.id.in_used);
+        et.setShowSoftInputOnFocus(false);
         if (r.hasUsage) et.setText(MainActivity.trim((float) r.used));
         et.requestFocus();
         et.selectAll();
+        buildPad(findViewById(R.id.in_pad));
         et.setOnEditorActionListener((v, id, e) -> {
             if (id == EditorInfo.IME_ACTION_DONE) { save(); return true; }
             return false;
@@ -84,6 +91,55 @@ public class UsageInputActivity extends Activity {
         web = findViewById(R.id.in_web);
         setupWeb();
         web.loadUrl(USAGE_URL);
+    }
+
+    /** 한 줄 숫자 키: 1~9, 0, ⌫ */
+    private void buildPad(LinearLayout pad) {
+        int gap = Math.round(2 * getResources().getDisplayMetrics().density);
+        String[] keys = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "⌫"};
+        for (String k : keys) {
+            View b;
+            if ("⌫".equals(k)) {
+                ImageView img = new ImageView(this);
+                img.setImageResource(R.drawable.ic_backspace);
+                img.setScaleType(ImageView.ScaleType.CENTER);
+                img.setContentDescription("한 글자 지우기");
+                b = img;
+            } else {
+                TextView t = new TextView(this);
+                t.setText(k);
+                t.setGravity(Gravity.CENTER);
+                t.setTextSize(18);
+                t.setTextColor(getColor(R.color.text_primary));
+                b = t;
+            }
+            b.setBackgroundResource(R.drawable.key_bg);
+            b.setOnClickListener(v -> press(k));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1f);
+            lp.setMargins(gap, 0, gap, 0);
+            pad.addView(b, lp);
+        }
+    }
+
+    /** 키보드처럼: 선택된 부분(처음엔 기존 값 전체)을 바꾸거나 커서 자리에 넣기 */
+    private void press(String k) {
+        if (!et.hasFocus()) et.requestFocus();
+        Editable t = et.getText();
+        int a = Math.max(0, Math.min(et.getSelectionStart(), et.getSelectionEnd()));
+        int b = Math.max(0, Math.max(et.getSelectionStart(), et.getSelectionEnd()));
+        int pos = a;
+        if (!"⌫".equals(k)) {
+            int rest = t.length() - (b - a);
+            t.replace(a, b, k);
+            pos = a + (t.length() - rest); // 최대 글자 수에 막히면 안 들어감
+        } else if (a != b) {
+            t.delete(a, b);
+        } else if (a > 0) {
+            t.delete(a - 1, a);
+            pos = a - 1;
+        }
+        et.setSelection(Math.min(pos, t.length()));
     }
 
     private void setupWeb() {
@@ -174,16 +230,6 @@ public class UsageInputActivity extends Activity {
                 })
                 .setNegativeButton("취소", null)
                 .show();
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        // stateAlwaysVisible로 안 뜨는 기기 대비: 처음 창이 뜰 때 입력 칸이 포커스면 키보드 올리기
-        if (hasFocus && !keyboardShown && et.hasFocus()) {
-            keyboardShown = true;
-            getWindow().getInsetsController().show(WindowInsets.Type.ime());
-        }
     }
 
     @Override
