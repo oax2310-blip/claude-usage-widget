@@ -12,6 +12,11 @@ public final class Fmt {
         return String.format(Locale.KOREA, "%.1f%%", v);
     }
 
+    /** % 없는 숫자(작은 % 기호를 따로 붙일 때) */
+    public static String num(double v) {
+        return String.format(Locale.KOREA, "%.1f", v);
+    }
+
     /** 퍼센트포인트(부호 없이) */
     public static String pp(double v) {
         return String.format(Locale.KOREA, "%.1f%%p", Math.abs(v));
@@ -51,10 +56,15 @@ public final class Fmt {
 
     /** 사용량 요약 한 줄: "여유 14.0%p · 남은 기간 하루 20.4%" */
     public static String usageLine(UsageCalc.Result r) {
-        String pace = (r.paceDiffAtInput >= 0 ? "여유 " : "초과 ") + pp(r.paceDiffAtInput);
+        String pace = paceStatus(r.paceDiffAtInput);
         String plan = r.lessThanDay
                 ? "초기화 전까지 " + pct(r.leftLimit)
                 : "남은 기간 하루 " + pct(r.dailyAdjusted);
         return pace + " · " + plan;
+    }
+
+    /** 권장 누적 대비: "여유 7.8%p" / "초과 8.7%p" */
+    public static String paceStatus(double diff) {
+        return (diff >= 0 ? "여유 " : "초과 ") + pp(diff);
     }
 }

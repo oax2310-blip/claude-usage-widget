@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 한 줄 위젯 막대: 진행값 = 클레이, 보조 진행값 = 코드에서 색을 입힘(여유 = 반투명 클레이, 초과 = 빨강).
+     scale을 써서 채워진 끝도 둥글게 유지 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape>
+            <corners android:radius="5dp" />
+            <solid android:color="@color/claude_track" />
+        </shape>
+    </item>
+    <item android:id="@android:id/secondaryProgress">
+        <scale
+            android:scaleGravity="left|center_vertical"
+            android:scaleWidth="100%">
+            <shape>
+                <corners android:radius="5dp" />
+                <solid android:color="@android:color/white" />
+            </shape>
+        </scale>
+    </item>
+    <item android:id="@android:id/progress">
+        <scale
+            android:scaleGravity="left|center_vertical"
+            android:scaleWidth="100%">
+            <shape>
+                <corners android:radius="5dp" />
+                <solid android:color="@color/claude_clay" />
+            </shape>
+        </scale>
+    </item>
+</layer-list>
