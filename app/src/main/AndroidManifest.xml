@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 앱 안 업데이트: GitHub 릴리스 확인·APK 받기 → 스스로 설치 -->
+    <!-- 앱 안 업데이트: GitHub 릴리스 확인·APK 받기 → 스스로 설치 / 입력 팝업에 claude.ai 사용량 페이지 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <application
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
@@ -25,14 +26,16 @@
             </intent-filter>
         </activity>
 
-        <!-- 한 줄 위젯의 사용량 숫자를 누르면 뜨는 입력 창(앱을 열지 않음) -->
+        <!-- 한 줄 위젯의 사용량 숫자를 누르면 뜨는 입력 팝업(앱을 열지 않음): 위쪽에 claude.ai 사용량 페이지.
+             돌리거나 다크 모드가 바뀌어도 페이지를 다시 불러오지 않게 -->
         <activity
             android:name=".UsageInputActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:excludeFromRecents="true"
             android:exported="false"
             android:taskAffinity=""
             android:theme="@style/InputTheme"
-            android:windowSoftInputMode="stateAlwaysVisible" />
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
 
         <receiver
             android:name=".UsageWidget"

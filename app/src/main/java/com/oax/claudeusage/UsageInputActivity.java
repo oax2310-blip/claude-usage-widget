@@ -2,68 +2,199 @@ package com.oax.claudeusage;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.Insets;
+import android.net.Uri;
 import android.os.Bundle;
-import android.text.InputType;
-import android.view.WindowManager;
+import android.view.View;
+import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
+import android.webkit.CookieManager;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebStorage;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.Toast;
 
-/** 한 줄 위젯의 사용량 숫자를 누르면 뜨는 입력 창: 앱을 열지 않고 현재 사용량(%)만 바로 수정. */
+/**
+ * 사용량 입력 팝업(한 줄 위젯의 숫자를 누르거나 앱에서 열기): 위쪽에 claude.ai 설정 → 사용량 페이지를 띄워
+ * 직접 보면서 아래에 현재 사용량(%)을 넣는다. 페이지는 보여주기만 하고 앱이 내용을 읽지 않는다
+ * (자동 접근·스크래핑은 Claude 약관 위반). claude.ai 로그인은 이 앱의 WebView에만 저장되고
+ * 백업에서 빠지며, '로그아웃'으로 지울 수 있다.
+ */
 public class UsageInputActivity extends Activity {
+    private static final String ORIGIN = "https://claude.ai";
+    private static final String USAGE_URL = ORIGIN + "/settings/usage";
+
     private Store store;
     private EditText et;
-    private AlertDialog dialog;
+    private WebView web;
+    private View loginRow, progress;
+    /** 로그인 화면을 거쳤는지(로그인을 마치고 다른 화면으로 가면 사용량 페이지로 다시 보냄) */
+    private boolean sawLogin;
+    private boolean keyboardShown;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_usage_input);
         store = new Store(this);
         UsageCalc.Result r = store.compute(System.currentTimeMillis());
 
-        et = new EditText(this);
-        et.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        et.setImeOptions(EditorInfo.IME_ACTION_DONE);
-        et.setSingleLine(true);
-        et.setHint("0~100");
-        if (r.hasUsage) {
-            et.setText(MainActivity.trim((float) r.used));
-            et.selectAll();
-        }
+        // 바깥(어두운 곳)을 누르면 닫기. 상태바·내비게이션바·키보드에 가리지 않도록 여백
+        View root = findViewById(R.id.in_root);
+        root.setOnClickListener(v -> finish());
+        final int pad = root.getPaddingLeft();
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            Insets b = insets.getInsets(WindowInsets.Type.systemBars()
+                    | WindowInsets.Type.displayCutout() | WindowInsets.Type.ime());
+            v.setPadding(pad + b.left, pad + b.top, pad + b.right, pad + b.bottom);
+            return insets;
+        });
+        // 열리자마자 입력 칸에 커서 + 기존 값 전체 선택 + 숫자 키보드(페이지는 위쪽에 남음)
+        et = findViewById(R.id.in_used);
+        if (r.hasUsage) et.setText(MainActivity.trim((float) r.used));
+        et.requestFocus();
+        et.selectAll();
         et.setOnEditorActionListener((v, id, e) -> {
             if (id == EditorInfo.IME_ACTION_DONE) { save(); return true; }
             return false;
         });
-        int pad = Math.round(20 * getResources().getDisplayMetrics().density);
-        FrameLayout box = new FrameLayout(this);
-        box.setPadding(pad, pad / 2, pad, 0);
-        box.addView(et);
-
-        AlertDialog.Builder b = new AlertDialog.Builder(this)
-                .setTitle("현재 사용량(%)")
-                .setView(box)
-                .setPositiveButton("저장", null)
-                .setNegativeButton("취소", null);
+        findViewById(R.id.in_save).setOnClickListener(v -> save());
+        View clear = findViewById(R.id.in_clear);
         if (r.hasUsage) {
-            b.setNeutralButton("지우기", (d, w) -> {
+            clear.setVisibility(View.VISIBLE);
+            clear.setOnClickListener(v -> {
                 store.clearUsed();
                 done();
             });
         }
-        dialog = b.create();
-        // 저장은 값이 올바를 때만 닫히도록 직접 처리
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                .setOnClickListener(v -> save()));
-        dialog.setOnDismissListener(d -> finish());
-        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-        et.requestFocus();
-        dialog.show();
+        findViewById(R.id.in_close).setOnClickListener(v -> finish());
+        findViewById(R.id.in_logout).setOnClickListener(v -> confirmLogout());
+        findViewById(R.id.in_paste).setOnClickListener(v -> pasteLink());
+        loginRow = findViewById(R.id.in_login_row);
+        progress = findViewById(R.id.in_progress);
+
+        web = findViewById(R.id.in_web);
+        setupWeb();
+        web.loadUrl(USAGE_URL);
+    }
+
+    private void setupWeb() {
+        WebSettings s = web.getSettings();
+        // claude.ai 화면을 그리는 데 필요(앱이 페이지에 스크립트를 넣거나 내용을 읽지는 않음)
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        CookieManager cm = CookieManager.getInstance();
+        cm.setAcceptCookie(true);
+        cm.setAcceptThirdPartyCookies(web, true);
+        web.setBackgroundColor(Color.TRANSPARENT);
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest req) {
+                Uri u = req.getUrl();
+                String scheme = u.getScheme();
+                if ("http".equals(scheme) || "https".equals(scheme)) return false;
+                // mailto: 등은 다른 앱으로
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, u));
+                } catch (Exception ignored) {
+                }
+                return true;
+            }
+
+            @Override
+            public void onPageStarted(WebView v, String url, Bitmap favicon) {
+                progress.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onPageFinished(WebView v, String url) {
+                progress.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void doUpdateVisitedHistory(WebView v, String url, boolean isReload) {
+                onUrl(url);
+            }
+        });
+    }
+
+    /** 화면(주소)이 바뀔 때: 로그인 화면이면 안내 표시, 로그인을 마치면 사용량 페이지로 */
+    private void onUrl(String url) {
+        boolean login = isLoginPage(url);
+        loginRow.setVisibility(login ? View.VISIBLE : View.GONE);
+        if (login) {
+            sawLogin = true;
+        } else if (sawLogin && url != null && url.startsWith(ORIGIN + "/") && !url.startsWith(USAGE_URL)) {
+            sawLogin = false;
+            web.loadUrl(USAGE_URL);
+        }
+    }
+
+    static boolean isLoginPage(String url) {
+        return url != null && (url.startsWith(ORIGIN + "/login") || url.startsWith(ORIGIN + "/magic-link"));
+    }
+
+    /** 메일의 로그인 링크를 복사해 왔으면 여기서 열기(폰 브라우저에서 열면 앱에는 로그인되지 않음) */
+    private void pasteLink() {
+        ClipboardManager cm = getSystemService(ClipboardManager.class);
+        ClipData clip = cm == null ? null : cm.getPrimaryClip();
+        String u = "";
+        if (clip != null && clip.getItemCount() > 0) {
+            CharSequence t = clip.getItemAt(0).coerceToText(this);
+            if (t != null) u = t.toString().trim();
+        }
+        if (u.startsWith("https://")) {
+            web.loadUrl(u);
+        } else {
+            toast("메일의 로그인 링크를 길게 눌러 복사한 뒤 눌러 주세요");
+        }
+    }
+
+    private void confirmLogout() {
+        new AlertDialog.Builder(this)
+                .setTitle("claude.ai 로그아웃")
+                .setMessage("이 앱 안에 저장된 claude.ai 로그인을 지워요. 다음에 볼 때 다시 로그인해야 해요.")
+                .setPositiveButton("로그아웃", (d, w) -> {
+                    WebStorage.getInstance().deleteAllData();
+                    CookieManager cm = CookieManager.getInstance();
+                    cm.removeAllCookies(ok -> {
+                        cm.flush();
+                        if (isDestroyed()) return;
+                        web.clearHistory();
+                        web.loadUrl(USAGE_URL);
+                    });
+                })
+                .setNegativeButton("취소", null)
+                .show();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // stateAlwaysVisible로 안 뜨는 기기 대비: 처음 창이 뜰 때 입력 칸이 포커스면 키보드 올리기
+        if (hasFocus && !keyboardShown && et.hasFocus()) {
+            keyboardShown = true;
+            getWindow().getInsetsController().show(WindowInsets.Type.ime());
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        CookieManager.getInstance().flush();
     }
 
     @Override
     protected void onDestroy() {
-        if (dialog != null && dialog.isShowing()) dialog.dismiss();
+        web.destroy();
         super.onDestroy();
     }
 
@@ -80,7 +211,7 @@ public class UsageInputActivity extends Activity {
 
     private void done() {
         UsageWidget.updateAll(this);
-        dialog.dismiss();
+        finish();
     }
 
     private void toast(String s) {

@@ -80,6 +80,8 @@ public class MainActivity extends Activity {
         tvVersion.setOnClickListener(v -> checkUpdate(true));
         findViewById(R.id.btn_period).setOnClickListener(v -> applyPeriod());
         findViewById(R.id.btn_save_used).setOnClickListener(v -> saveUsed());
+        findViewById(R.id.btn_view_usage).setOnClickListener(v ->
+                startActivity(new Intent(this, UsageInputActivity.class)));
         findViewById(R.id.btn_clear_used).setOnClickListener(v -> {
             store.clearUsed();
             etUsed.setText("");

@@ -228,7 +228,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="넣으면 권장 페이스 대비 여유/초과와 남은 기간 하루 권장량을 보여줘요. 초기화되면 자동으로 지워져요."
+            android:text="넣으면 권장 페이스 대비 여유/초과와 남은 기간 하루 권장량을 보여줘요. 초기화되면 자동으로 지워져요. 아래 버튼이나 한 줄 위젯의 숫자를 누르면 claude.ai 사용량 페이지를 보면서 넣을 수 있어요(처음 한 번 로그인)."
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
 
@@ -273,12 +273,19 @@
                 android:text="지우기" />
         </LinearLayout>
 
+        <Button
+            android:id="@+id/btn_view_usage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="claude.ai 사용량 페이지 보며 입력" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:lineSpacingExtra="3dp"
-            android:text="· 하루 권장량 = 100% ÷ 초기화 주기(7일이면 14.3%)\n· 매일 오전 3시에 그날 몫이 권장 누적에 한 번에 더해져요\n· 초기화 시각이 오전 3시가 아니면 첫날·마지막날이 길이에 비례해 하루 몫을 나눠 가져요(예: 토 오후 3시 → 8일, 첫날·마지막날 7.1%씩)\n· 위젯 추가: 홈 화면 빈 곳 길게 누르기 → 위젯 → Claude 사용량\n· 위젯은 30분마다 자동 갱신, ↻ 누르면 즉시 갱신\n· 새 버전이 나오면 맨 위에 업데이트 버튼이 떠요"
+            android:text="· 하루 권장량 = 100% ÷ 초기화 주기(7일이면 14.3%)\n· 매일 오전 3시에 그날 몫이 권장 누적에 한 번에 더해져요\n· 초기화 시각이 오전 3시가 아니면 첫날·마지막날이 길이에 비례해 하루 몫을 나눠 가져요(예: 토 오후 3시 → 8일, 첫날·마지막날 7.1%씩)\n· 위젯 추가: 홈 화면 빈 곳 길게 누르기 → 위젯 → Claude 사용량\n· 위젯은 30분마다 자동 갱신, ↻ 누르면 즉시 갱신\n· claude.ai 사용량 페이지는 보여주기만 하고 앱이 내용을 읽지 않아요. 로그인은 이 앱 안에만 저장되고, 입력 창의 '로그아웃'으로 지울 수 있어요\n· 새 버전이 나오면 맨 위에 업데이트 버튼이 떠요"
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
 
