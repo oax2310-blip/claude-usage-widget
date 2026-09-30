@@ -14,6 +14,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
@@ -23,6 +24,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -36,7 +38,8 @@ import org.json.JSONTokener;
 /**
  * 사용량 입력 팝업(한 줄 위젯의 숫자를 누르거나 앱에서 열기): 위쪽에 claude.ai 설정 → 사용량 페이지를 띄워
  * 직접 보면서 아래에 현재 사용량(%)을 넣는다. 팝업이 떠 있는 동안에만, 화면에 그려진 페이지 글자에서
- * 주간 사용량을 찾아 입력 칸에 미리 채우고(폰 안에서만 읽고 서버에 따로 요청하지 않음), 저장은 직접 누른다.
+ * 주간 사용량을 찾아 입력 칸에 채우고(폰 안에서만 읽고 서버에 따로 요청하지 않음), 2초 뒤 자동으로 저장하고 닫는다
+ * (그 사이 숫자 키·입력 칸·페이지를 만지면 자동 저장 취소).
  * 앱이 알아서 claude.ai에 접속하지는 않는다(자동 접근은 Claude 약관 위반).
  * claude.ai 로그인은 이 앱의 WebView에만 저장되고 백업에서 빠지며, '로그아웃'으로 지울 수 있다.
  */
@@ -56,6 +59,8 @@ public class UsageInputActivity extends Activity {
     /** 사용량 막대가 그려질 때까지 이 간격으로 이 횟수만큼(약 18초) 다시 봄 */
     private static final long READ_EVERY = 600;
     private static final int READ_MAX = 30;
+    /** 찾은 값을 보여 주고 이만큼(초) 뒤 자동 저장 — 잘못 집었으면 그 사이 고칠 수 있게 */
+    private static final int AUTO_SAVE_SECONDS = 2;
 
     private Store store;
     private EditText et;
@@ -73,6 +78,10 @@ public class UsageInputActivity extends Activity {
     private String seenUrl, seenSrc, seenText;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable reader = this::readPage;
+    private Button saveBtn;
+    /** 자동 저장까지 남은 초(0이면 자동 저장 안 함) */
+    private int autoLeft;
+    private final Runnable autoTick = this::autoTick;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,7 +112,13 @@ public class UsageInputActivity extends Activity {
             if (id == EditorInfo.IME_ACTION_DONE) { save(); return true; }
             return false;
         });
-        findViewById(R.id.in_save).setOnClickListener(v -> save());
+        saveBtn = findViewById(R.id.in_save);
+        saveBtn.setOnClickListener(v -> save());
+        // 입력 칸을 눌러 고치려 하면 자동 저장 취소
+        et.setOnTouchListener((v, e) -> {
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) cancelAutoSave();
+            return false;
+        });
         View clear = findViewById(R.id.in_clear);
         if (r.hasUsage) {
             clear.setVisibility(View.VISIBLE);
@@ -120,6 +135,11 @@ public class UsageInputActivity extends Activity {
         progress = findViewById(R.id.in_progress);
 
         web = findViewById(R.id.in_web);
+        // 페이지를 만져 살펴보려 하면 자동 저장 취소(팝업이 갑자기 닫히지 않게)
+        web.setOnTouchListener((v, e) -> {
+            if (e.getActionMasked() == MotionEvent.ACTION_DOWN) cancelAutoSave();
+            return false;
+        });
         setupWeb();
         web.loadUrl(USAGE_URL);
     }
@@ -156,6 +176,7 @@ public class UsageInputActivity extends Activity {
     /** 키보드처럼: 선택된 부분(처음엔 기존 값 전체)을 바꾸거나 커서 자리에 넣기 */
     private void press(String k) {
         userEdited = true;
+        cancelAutoSave();
         if (!et.hasFocus()) et.requestFocus();
         Editable t = et.getText();
         int a = Math.max(0, Math.min(et.getSelectionStart(), et.getSelectionEnd()));
@@ -290,6 +311,28 @@ public class UsageInputActivity extends Activity {
         et.requestFocus();
         et.selectAll();
         setLabel("가져온 값", R.color.accent, 15, null);
+        autoLeft = AUTO_SAVE_SECONDS;
+        saveBtn.setText("저장 " + autoLeft);
+        handler.postDelayed(autoTick, 1000);
+    }
+
+    /** 자동 저장 카운트다운: "저장 2" → "저장 1" → 저장하고 닫기 */
+    private void autoTick() {
+        if (autoLeft <= 0 || isFinishing()) return;
+        if (--autoLeft > 0) {
+            saveBtn.setText("저장 " + autoLeft);
+            handler.postDelayed(autoTick, 1000);
+        } else if (save()) {
+            Toast.makeText(getApplicationContext(), "claude.ai에서 " + et.getText() + "%를 가져와 저장했어요",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void cancelAutoSave() {
+        if (autoLeft <= 0) return;
+        autoLeft = 0;
+        handler.removeCallbacks(autoTick);
+        saveBtn.setText("저장");
     }
 
     private void setLabel(String text, int color, int sp, View.OnClickListener click) {
@@ -378,19 +421,22 @@ public class UsageInputActivity extends Activity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacks(reader);
+        handler.removeCallbacks(autoTick);
         web.destroy();
         super.onDestroy();
     }
 
-    private void save() {
+    /** 저장하고 닫기. 값이 올바르지 않으면 false */
+    private boolean save() {
         Float v = MainActivity.parse(et.getText().toString());
         if (v == null || v < 0 || v > 100) {
             toast("0~100 사이 숫자로 넣어 주세요");
-            return;
+            return false;
         }
         if (store.resetAt() <= 0) toast("초기화 시각도 설정해야 페이스 비교가 돼요");
         store.setUsed(v, System.currentTimeMillis());
         done();
+        return true;
     }
 
     private void done() {
