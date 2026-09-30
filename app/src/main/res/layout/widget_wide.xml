@@ -4,7 +4,6 @@
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/widget_bg_claude"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="18dp"
