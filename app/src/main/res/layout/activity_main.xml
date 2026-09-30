@@ -32,6 +32,17 @@
             android:textColor="@color/text_secondary"
             android:textSize="14sp" />
 
+        <!-- 새 버전이 있을 때만 보임 -->
+        <Button
+            android:id="@+id/btn_update"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="@color/accent"
+            android:textColor="@color/app_bg"
+            android:textSize="15sp"
+            android:visibility="gone" />
+
         <!-- 요약 카드 -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -77,12 +88,12 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="초기화까지 남은 권장량"
+                        android:text="지금까지 권장 누적"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
                     <TextView
-                        android:id="@+id/tv_remain"
+                        android:id="@+id/tv_pace"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:textColor="@color/accent"
@@ -267,7 +278,17 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:lineSpacingExtra="3dp"
-            android:text="· 하루 권장량 = 100% ÷ 초기화 주기\n· 남은 권장량 = 지금부터 초기화까지 남은 시간만큼의 권장 사용량\n· 위젯 추가: 홈 화면 빈 곳 길게 누르기 → 위젯 → Claude 사용량\n· 위젯은 30분마다 자동 갱신, ↻ 누르면 즉시 갱신"
+            android:text="· 하루 권장량 = 100% ÷ 초기화 주기\n· 권장 누적 = 이번 주기 시작부터 지금까지 쓸 수 있는 권장 사용량\n· 위젯 추가: 홈 화면 빈 곳 길게 누르기 → 위젯 → Claude 사용량\n· 위젯은 30분마다 자동 갱신, ↻ 누르면 즉시 갱신\n· 새 버전이 나오면 맨 위에 업데이트 버튼이 떠요"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tv_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
     </LinearLayout>

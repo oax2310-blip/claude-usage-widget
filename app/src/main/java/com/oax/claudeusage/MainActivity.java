@@ -3,10 +3,13 @@ package com.oax.claudeusage;
 import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
+import android.content.Intent;
 import android.graphics.Insets;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.inputmethod.EditorInfo;
@@ -22,10 +25,14 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
     private Store store;
-    private TextView tvDaily, tvRemain, tvCountdown, tvPaceLabel, tvUsedLabel, tvUsageInfo;
+    private TextView tvDaily, tvPace, tvCountdown, tvPaceLabel, tvUsedLabel, tvUsageInfo, tvVersion;
     private ProgressBar pbPace, pbUsed;
-    private Button btnReset;
+    private Button btnReset, btnUpdate;
     private EditText etPeriod, etUsed;
+    /** 설치 가능한 새 버전(없으면 null) */
+    private Updater.Release latest;
+    /** '출처를 알 수 없는 앱' 허용하러 설정에 다녀오는 중 */
+    private boolean wantInstall;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
@@ -43,7 +50,7 @@ public class MainActivity extends Activity {
         store = new Store(this);
 
         tvDaily = findViewById(R.id.tv_daily);
-        tvRemain = findViewById(R.id.tv_remain);
+        tvPace = findViewById(R.id.tv_pace);
         tvCountdown = findViewById(R.id.tv_countdown);
         tvPaceLabel = findViewById(R.id.tv_pace_label);
         tvUsedLabel = findViewById(R.id.tv_used_label);
@@ -53,6 +60,8 @@ public class MainActivity extends Activity {
         btnReset = findViewById(R.id.btn_reset);
         etPeriod = findViewById(R.id.et_period);
         etUsed = findViewById(R.id.et_used);
+        btnUpdate = findViewById(R.id.btn_update);
+        tvVersion = findViewById(R.id.tv_version);
 
         // 상태바·내비게이션바·키보드에 가리지 않도록 여백 적용(Android 15 전체화면 대응)
         View content = findViewById(R.id.content);
@@ -66,6 +75,9 @@ public class MainActivity extends Activity {
         });
 
         btnReset.setOnClickListener(v -> pickReset());
+        btnUpdate.setOnClickListener(v -> startUpdate());
+        tvVersion.setText("버전 " + Updater.currentVersionName(this) + " · 눌러서 업데이트 확인");
+        tvVersion.setOnClickListener(v -> checkUpdate(true));
         findViewById(R.id.btn_period).setOnClickListener(v -> applyPeriod());
         findViewById(R.id.btn_save_used).setOnClickListener(v -> saveUsed());
         findViewById(R.id.btn_clear_used).setOnClickListener(v -> {
@@ -88,13 +100,61 @@ public class MainActivity extends Activity {
         super.onResume();
         etPeriod.setText(trim(store.periodDays()));
         handler.post(ticker);
+
+        Updater.setListener(this::renderUpdate);
+        renderUpdate();
+        if (wantInstall) {
+            wantInstall = false;
+            if (getPackageManager().canRequestPackageInstalls()) startUpdate();
+        }
+        checkUpdate(false);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         handler.removeCallbacks(ticker);
+        Updater.setListener(null);
         UsageWidget.updateAll(this);
+    }
+
+    private void checkUpdate(boolean manual) {
+        Updater.check(this, manual, rel -> {
+            if (isDestroyed()) return;
+            if (rel == null) {
+                if (manual) toast("업데이트 확인 실패 — 인터넷 연결을 확인해 주세요");
+                return;
+            }
+            latest = rel.versionCode > Updater.currentVersionCode(this) ? rel : null;
+            if (manual && latest == null) toast("최신 버전이에요");
+            renderUpdate();
+        });
+    }
+
+    private void startUpdate() {
+        if (latest == null || Updater.busy()) return;
+        if (!getPackageManager().canRequestPackageInstalls()) {
+            // 처음 한 번만: 이 앱이 업데이트를 설치할 수 있게 허용
+            wantInstall = true;
+            toast("'이 출처 허용'을 켜고 돌아오면 업데이트가 시작돼요");
+            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName())));
+            return;
+        }
+        Updater.install(this, latest);
+    }
+
+    private void renderUpdate() {
+        if (latest == null) {
+            btnUpdate.setVisibility(View.GONE);
+            return;
+        }
+        boolean busy = Updater.busy();
+        btnUpdate.setVisibility(View.VISIBLE);
+        btnUpdate.setEnabled(!busy);
+        btnUpdate.setText(busy
+                ? "업데이트 중… 끝나면 앱이 닫혀요(다시 열어 주세요)"
+                : "새 버전 " + latest.versionName + " 업데이트");
     }
 
     private void pickReset() {
@@ -148,7 +208,7 @@ public class MainActivity extends Activity {
 
         tvDaily.setText(Fmt.pct(r.dailyBase));
         if (!r.configured) {
-            tvRemain.setText("--");
+            tvPace.setText("--");
             tvCountdown.setText("아래 1번에서 초기화 시각을 설정하세요");
             btnReset.setText("초기화 시각 선택");
             tvPaceLabel.setVisibility(View.GONE);
@@ -159,13 +219,13 @@ public class MainActivity extends Activity {
             return;
         }
 
-        tvRemain.setText(Fmt.pct(r.paceRemaining));
+        tvPace.setText(Fmt.pct(r.paceUsed));
         tvCountdown.setText("초기화까지 " + Fmt.duration(r.remainingMs) + "\n" + Fmt.dateLong(r.resetAt));
         btnReset.setText(Fmt.dateLong(r.resetAt));
 
         tvPaceLabel.setVisibility(View.VISIBLE);
         pbPace.setVisibility(View.VISIBLE);
-        tvPaceLabel.setText("지금까지 권장 누적 " + Fmt.pct(r.paceUsed));
+        tvPaceLabel.setText("초기화까지 남은 권장 " + Fmt.pct(r.paceRemaining));
         pbPace.setProgress((int) Math.round(r.paceUsed * 10));
 
         tvUsageInfo.setVisibility(View.VISIBLE);
