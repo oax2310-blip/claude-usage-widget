@@ -235,14 +235,14 @@ public class MainActivity extends Activity {
             tvUsedLabel.setText("실제 사용 " + Fmt.pct(r.used) + " (" + Fmt.age(r.usageAgeMs) + " 입력)");
             pbUsed.setProgress((int) Math.round(r.used * 10));
 
-            boolean over = r.paceDiffAtInput < 0;
+            boolean over = r.paceDiff < 0;
             String pace = over
-                    ? "권장보다 " + Fmt.pp(r.paceDiffAtInput) + " 더 썼어요"
-                    : "권장보다 " + Fmt.pp(r.paceDiffAtInput) + " 덜 썼어요(여유)";
+                    ? "권장보다 " + Fmt.pp(r.paceDiff) + " 더 썼어요"
+                    : "권장보다 " + Fmt.pp(r.paceDiff) + " 덜 썼어요(여유)";
             String plan = r.lessThanDay
                     ? "초기화 전까지 남은 한도 " + Fmt.pct(r.leftLimit) + " 사용 가능"
                     : "남은 한도 " + Fmt.pct(r.leftLimit) + " → 남은 기간 하루 " + Fmt.pct(r.dailyAdjusted);
-            tvUsageInfo.setText(pace + " (입력 시점 기준)\n" + plan);
+            tvUsageInfo.setText(pace + "\n" + plan);
             tvUsageInfo.setTextColor(getColor(over ? R.color.warn : R.color.text_primary));
         } else {
             tvUsedLabel.setVisibility(View.GONE);

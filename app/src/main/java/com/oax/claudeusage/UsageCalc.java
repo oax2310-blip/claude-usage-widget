@@ -44,13 +44,15 @@ public final class UsageCalc {
         public long nextGrantAt;
         /** 다음에 더해질 몫(%) */
         public double nextAllot;
+        /** 권장 누적이 다음으로 바뀌는 시각(다음 오전 3시, 마지막 날이면 초기화 시각) — 이때 화면 다시 그림 */
+        public long nextChangeAt;
 
         /** 이번 주기 안에 입력한 실제 사용량이 있는지 */
         public boolean hasUsage;
         public double used;
         public long usageAgeMs;
-        /** 입력 시점의 권장 누적 − 실제 사용(+면 여유, −면 초과) */
-        public double paceDiffAtInput;
+        /** 지금 권장 누적 − 현재 사용(+면 여유, −면 초과) — 오전 3시에 오늘 몫이 더해지면 바로 반영 */
+        public double paceDiff;
         /** 남은 한도(%) = 100 − 사용 */
         public double leftLimit;
         /** 초기화까지 하루 미만 남았는지 */
@@ -105,13 +107,14 @@ public final class UsageCalc {
         r.paceUsed = paceAt(r.windowStart, r.resetAt, now, zone);
         r.paceRemaining = 100.0 - r.paceUsed;
         days(r, now, zone);
+        r.nextChangeAt = r.nextGrantAt > 0 ? r.nextGrantAt : r.resetAt;
 
         boolean inWindow = usedAt >= r.windowStart || r.windowStart > now;
         r.hasUsage = !Double.isNaN(used) && used >= 0 && usedAt > 0 && inWindow && usedAt <= now + MINUTE;
         if (r.hasUsage) {
             r.used = Math.min(100.0, used);
             r.usageAgeMs = Math.max(0, now - usedAt);
-            r.paceDiffAtInput = paceAt(r.windowStart, r.resetAt, usedAt, zone) - r.used;
+            r.paceDiff = r.paceUsed - r.used;
             r.leftLimit = Math.max(0.0, 100.0 - r.used);
             double days = (double) r.remainingMs / (double) DAY;
             r.lessThanDay = days < 1.0;

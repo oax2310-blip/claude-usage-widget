@@ -1,5 +1,6 @@
 package com.oax.claudeusage;
 
+import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
@@ -14,7 +15,8 @@ import android.widget.RemoteViews;
 import java.util.Map;
 
 /**
- * 홈 화면 위젯. 30분마다 자동 갱신, ↻ 누르면 즉시 갱신, 나머지 부분을 누르면 앱 열림.
+ * 홈 화면 위젯. 30분마다 + 매일 오전 3시(오늘 몫이 더해질 때)·초기화 시각에 자동 갱신,
+ * ↻ 누르면 즉시 갱신, 나머지 부분을 누르면 앱 열림.
  * 한 줄 위젯은 왼쪽 사용량 숫자를 누르면 앱을 열지 않고 바로 사용량 입력 창이 뜸.
  * 크기에 따라 작은 / 한 줄(5x1) / 큰 레이아웃 중 알맞은 것이 표시됨.
  */
@@ -50,6 +52,23 @@ public class UsageWidget extends AppWidgetProvider {
         long now = System.currentTimeMillis();
         UsageCalc.Result r = new Store(ctx).compute(now);
         for (int id : ids) mgr.updateAppWidget(id, build(ctx, r, now));
+        scheduleNextChange(ctx, r);
+    }
+
+    /**
+     * 권장 누적이 바뀌는 때(다음 오전 3시, 마지막 날이면 초기화 시각)에 다시 그리도록 예약.
+     * 화면이 꺼져 있으면 폰을 깨우지 않고 켜지는 즉시 반영(RTC). 정확한 알람 권한 없이 최대 10분 안에 실행됨.
+     */
+    private static void scheduleNextChange(Context ctx, UsageCalc.Result r) {
+        AlarmManager am = ctx.getSystemService(AlarmManager.class);
+        Intent refresh = new Intent(ctx, UsageWidget.class).setAction(ACTION_REFRESH);
+        PendingIntent pi = PendingIntent.getBroadcast(ctx, 3, refresh,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        if (!r.configured) {
+            am.cancel(pi);
+            return;
+        }
+        am.setWindow(AlarmManager.RTC, r.nextChangeAt, 10 * UsageCalc.MINUTE, pi);
     }
 
     private static RemoteViews build(Context ctx, UsageCalc.Result r, long now) {
@@ -99,7 +118,7 @@ public class UsageWidget extends AppWidgetProvider {
             v.setViewVisibility(R.id.w_used_col, View.VISIBLE);
             v.setTextViewText(R.id.w_used, Fmt.pct(r.used));
             String line = Fmt.usageLine(r) + " (" + Fmt.age(r.usageAgeMs) + " 입력)";
-            boolean over = r.paceDiffAtInput < 0;
+            boolean over = r.paceDiff < 0;
             v.setTextViewText(over ? R.id.w_usage_over : R.id.w_usage_ok, line);
             v.setViewVisibility(R.id.w_usage_ok, over ? View.GONE : View.VISIBLE);
             v.setViewVisibility(R.id.w_usage_over, over ? View.VISIBLE : View.GONE);

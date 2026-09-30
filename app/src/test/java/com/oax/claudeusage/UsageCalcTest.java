@@ -135,22 +135,46 @@ public class UsageCalcTest {
         long now = at(9, 30, 12, 0); // 권장 누적 64.29%, 초기화까지 3일 3시간
         UsageCalc.Result r = calc(now, 50, now);
         assertTrue(r.hasUsage);
-        assertEquals(HALF + 4 * FULL - 50, r.paceDiffAtInput, 1e-9);
+        assertEquals(HALF + 4 * FULL - 50, r.paceDiff, 1e-9);
         assertEquals(50.0, r.leftLimit, 1e-9);
         assertEquals(16.0, r.dailyAdjusted, 1e-9); // 50 / 3.125일
         assertEquals("여유 14.3%p · 남은 기간 하루 16.0%", Fmt.usageLine(r));
     }
 
     @Test
-    public void usageOverPaceUsesInputTime() {
-        long inputAt = at(9, 28, 12, 0);   // 월요일: 권장 누적 35.71%
-        long now = at(9, 29, 12, 0);
+    public void usageComparesWithPaceNowNotAtInput() {
+        long inputAt = at(9, 28, 12, 0);   // 월요일: 권장 누적 35.71% → 그때라면 초과
+        long now = at(9, 29, 12, 0);       // 화요일: 권장 누적 50.0%
         UsageCalc.Result r = calc(now, 40, inputAt);
         assertTrue(r.hasUsage);
-        assertEquals(HALF + 2 * FULL - 40, r.paceDiffAtInput, 1e-9);
+        assertEquals(HALF + 3 * FULL - 40, r.paceDiff, 1e-9);
         assertEquals(60 / 4.125, r.dailyAdjusted, 1e-9); // 60 / 4일 3시간
         assertEquals(DAY, r.usageAgeMs);
-        assertTrue(Fmt.usageLine(r).startsWith("초과 4.3%p"));
+        assertTrue(Fmt.usageLine(r).startsWith("여유 10.0%p"));
+    }
+
+    @Test
+    public void overTurnsSpareAt3am() {
+        long inputAt = at(10, 1, 2, 0);    // 목 새벽 2시: 권장 누적 64.3% < 사용 69.0%
+        UsageCalc.Result r = calc(at(10, 1, 2, 59), 69, inputAt);
+        assertEquals(HALF + 4 * FULL - 69, r.paceDiff, 1e-9);
+        assertTrue(Fmt.usageLine(r).startsWith("초과 4.7%p"));
+
+        // 오전 3시에 오늘 몫(14.3%)이 더해지면 같은 사용량이라도 바로 여유
+        r = calc(at(10, 1, 4, 59), 69, inputAt);
+        assertEquals(HALF + 5 * FULL, r.paceUsed, 1e-9);
+        assertEquals(HALF + 5 * FULL - 69, r.paceDiff, 1e-9);
+        assertTrue(Fmt.usageLine(r).startsWith("여유 9.6%p"));
+    }
+
+    @Test
+    public void nextChangeIsNext3amThenReset() {
+        assertEquals(at(10, 1, 3, 0), calc(at(10, 1, 2, 0)).nextChangeAt);
+        assertEquals(at(10, 2, 3, 0), calc(at(10, 1, 3, 0)).nextChangeAt);
+        // 마지막 날: 더 더해질 몫이 없으니 초기화 시각
+        assertEquals(RESET, calc(at(10, 3, 9, 0)).nextChangeAt);
+        // 주기 시작 전: 첫 몫이 더해지는 주기 시작 시각
+        assertEquals(at(9, 26, 15, 0), calc(at(9, 23, 12, 0)).nextChangeAt);
     }
 
     @Test
