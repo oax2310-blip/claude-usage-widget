@@ -126,8 +126,8 @@ public class UsageWidget extends AppWidgetProvider {
         }
         v.setProgressBar(R.id.w_bar, WideModel.BAR_MAX, m.barProgress, false);
         v.setInt(R.id.w_bar, "setSecondaryProgress", m.barSecondary);
-        // 여유: 사용 = 초록, 여유 = 연한 초록 / 초과: 권장 누적까지 클레이, 넘친 만큼 빨강
-        // 사용량 입력 전: 권장 누적 = 반투명 클레이
+        // 여유: 사용 = 초록, 여유 = 밝기가 다른 초록(라이트는 더 밝게, 다크는 더 어둡게)
+        // 초과: 권장 누적까지 클레이, 넘친 만큼 빨강 / 사용량 입력 전: 권장 누적 = 반투명 클레이
         boolean spare = m.status != null && !m.barOver;
         v.setColorStateList(R.id.w_bar, "setProgressTintList",
                 spare ? R.color.claude_ok_bar : R.color.claude_clay);
