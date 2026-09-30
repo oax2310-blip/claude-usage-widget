@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 앱 안 업데이트: GitHub 릴리스 확인·APK 받기 → 스스로 설치 / claude.ai에서 사용량 읽기 -->
+    <!-- 앱 안 업데이트: GitHub 릴리스 확인·APK 받기 → 스스로 설치 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
 
     <application
         android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher"
@@ -25,13 +24,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- 앱 안에서 claude.ai 로그인(자동 읽기 연결). 돌려도 로그인 화면이 처음부터 다시 뜨지 않게 -->
-        <activity
-            android:name=".LoginActivity"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
 
         <!-- 한 줄 위젯의 사용량 숫자를 누르면 뜨는 입력 창(앱을 열지 않음) -->
         <activity

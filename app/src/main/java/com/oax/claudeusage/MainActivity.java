@@ -1,7 +1,6 @@
 package com.oax.claudeusage;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
@@ -26,9 +25,9 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
     private Store store;
-    private TextView tvDaily, tvPace, tvCountdown, tvPaceLabel, tvUsedLabel, tvUsageInfo, tvVersion, tvSync;
+    private TextView tvDaily, tvPace, tvCountdown, tvPaceLabel, tvUsedLabel, tvUsageInfo, tvVersion;
     private ProgressBar pbPace, pbUsed;
-    private Button btnReset, btnUpdate, btnLink, btnUnlink;
+    private Button btnReset, btnUpdate;
     private EditText etPeriod, etUsed;
     /** 설치 가능한 새 버전(없으면 null) */
     private Updater.Release latest;
@@ -40,7 +39,6 @@ public class MainActivity extends Activity {
         @Override
         public void run() {
             render();
-            renderSync();
             handler.postDelayed(this, 30_000);
         }
     };
@@ -64,9 +62,6 @@ public class MainActivity extends Activity {
         etUsed = findViewById(R.id.et_used);
         btnUpdate = findViewById(R.id.btn_update);
         tvVersion = findViewById(R.id.tv_version);
-        tvSync = findViewById(R.id.tv_sync);
-        btnLink = findViewById(R.id.btn_link);
-        btnUnlink = findViewById(R.id.btn_unlink);
 
         // 상태바·내비게이션바·키보드에 가리지 않도록 여백 적용(Android 15 전체화면 대응)
         View content = findViewById(R.id.content);
@@ -79,19 +74,6 @@ public class MainActivity extends Activity {
             return insets;
         });
 
-        btnLink.setOnClickListener(v -> {
-            if (store.linked() && !store.syncRelogin()) sync();
-            else startActivity(new Intent(this, LoginActivity.class));
-        });
-        btnUnlink.setOnClickListener(v -> new AlertDialog.Builder(this)
-                .setTitle("연결 해제")
-                .setMessage("앱에 저장된 claude.ai 로그인을 지우고 자동 읽기를 꺼요. 지금 값은 그대로 남아요.")
-                .setPositiveButton("해제", (d, w) -> {
-                    UsageSync.unlink(this);
-                    renderSync();
-                })
-                .setNegativeButton("취소", null)
-                .show());
         btnReset.setOnClickListener(v -> pickReset());
         btnUpdate.setOnClickListener(v -> startUpdate());
         tvVersion.setText("버전 " + Updater.currentVersionName(this) + " · 눌러서 업데이트 확인");
@@ -118,8 +100,6 @@ public class MainActivity extends Activity {
         super.onResume();
         etPeriod.setText(trim(store.periodDays()));
         handler.post(ticker);
-        // 로그인해 뒀으면 열 때마다 claude.ai에서 새로 읽기(이미 읽는 중이면 그 결과를 받아 화면 갱신)
-        if (UsageSync.busy() || store.syncDue(System.currentTimeMillis(), UsageSync.RESUME_INTERVAL)) sync();
 
         Updater.setListener(this::renderUpdate);
         renderUpdate();
@@ -136,37 +116,6 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(ticker);
         Updater.setListener(null);
         UsageWidget.updateAll(this);
-    }
-
-    private void sync() {
-        UsageSync.run(this, (ok, err) -> {
-            if (isDestroyed()) return;
-            afterChange();
-            renderSync();
-        });
-        renderSync();
-    }
-
-    private void renderSync() {
-        boolean linked = store.linked(), busy = UsageSync.busy();
-        String err = store.syncError();
-        boolean failed = linked && !busy && err != null;
-        btnLink.setEnabled(!busy);
-        btnUnlink.setEnabled(!busy);
-        btnUnlink.setVisibility(linked ? View.VISIBLE : View.GONE);
-        tvSync.setTextColor(getColor(failed ? R.color.warn : R.color.text_secondary));
-        if (!linked) {
-            btnLink.setText("Claude 로그인");
-            tvSync.setText("앱 안에서 claude.ai에 한 번 로그인해 두면 주간 사용량과 초기화 시각을 자동으로 읽어요"
-                    + " (앱을 열 때, 위젯 ↻를 누를 때, 30분마다).");
-            return;
-        }
-        btnLink.setText(busy ? "읽는 중…" : store.syncRelogin() ? "다시 로그인" : "지금 읽기");
-        long ok = store.syncOk();
-        String last = ok > 0 ? Fmt.age(System.currentTimeMillis() - ok) + " 읽음" : "아직 못 읽음";
-        if (busy) tvSync.setText("claude.ai에서 읽는 중… (" + last + ")");
-        else if (failed) tvSync.setText("읽기 실패: " + err + "\n마지막으로 읽은 값: " + last);
-        else tvSync.setText("연결됨 · " + last + " · 앱을 열 때, 위젯 ↻를 누를 때, 30분마다 자동으로 읽어요");
     }
 
     private void checkUpdate(boolean manual) {
@@ -283,8 +232,7 @@ public class MainActivity extends Activity {
         if (r.hasUsage) {
             tvUsedLabel.setVisibility(View.VISIBLE);
             pbUsed.setVisibility(View.VISIBLE);
-            tvUsedLabel.setText("실제 사용 " + Fmt.pct(r.used) + " (" + Fmt.age(r.usageAgeMs)
-                    + (store.usedAuto() ? " 읽음)" : " 입력)"));
+            tvUsedLabel.setText("실제 사용 " + Fmt.pct(r.used) + " (" + Fmt.age(r.usageAgeMs) + " 입력)");
             pbUsed.setProgress((int) Math.round(r.used * 10));
 
             boolean over = r.paceDiff < 0;
