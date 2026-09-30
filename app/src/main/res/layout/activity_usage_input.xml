@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 사용량 입력 팝업: 위쪽에 claude.ai 사용량 페이지(보기만), 아래쪽에 입력. 바깥(어두운 곳)을 누르면 닫힘 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/in_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#99000000"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@drawable/card_bg"
+        android:clickable="true"
+        android:clipToOutline="true"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="18dp"
+            android:paddingEnd="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="claude.ai 사용량"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/in_logout"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="로그아웃"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/in_close"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="닫기"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- claude.ai 로그인 화면일 때만 보임 -->
+        <LinearLayout
+            android:id="@+id/in_login_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="18dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="4dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="처음 한 번 로그인해 주세요. 앱 안에서는 Google 로그인이 막힐 수 있어요 — 같은 이메일로 로그인 코드를 받거나, 메일의 로그인 링크를 길게 눌러 복사한 뒤 오른쪽 버튼을 누르세요."
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/in_paste"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="링크\n붙여넣기"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/in_progress"
+            style="@android:style/Widget.Material.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:indeterminate="true"
+            android:visibility="gone" />
+
+        <WebView
+            android:id="@+id/in_web"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/card_bg"
+        android:clickable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="18dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="현재 사용량"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp" />
+
+        <EditText
+            android:id="@+id/in_used"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:hint="0~100"
+            android:imeOptions="actionDone"
+            android:importantForAutofill="no"
+            android:inputType="numberDecimal"
+            android:maxLength="5"
+            android:selectAllOnFocus="true"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:text="%"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/in_clear"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="지우기"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/in_save"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="저장" />
+    </LinearLayout>
+</LinearLayout>

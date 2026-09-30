@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 입력 팝업의 claude.ai 로그인(WebView 쿠키)은 클라우드 백업·기기 이전에서 빼기: 새 폰에서는 다시 로그인 -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="app_webview" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="app_webview" />
+    </device-transfer>
+</data-extraction-rules>
