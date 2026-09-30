@@ -1,0 +1,46 @@
+package com.oax.claudeusage;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import org.junit.Test;
+
+public class PageUsageTest {
+    @Test
+    public void koreanPageTakesAllModelsNotSession() {
+        String page = "설정\n일반\n계정\n개인정보보호\n결제\n사용량\n사용량 Pro\n"
+                + "주의하세요. 이 속도라면 토요일 재설정 전에 사용량이 소진됩니다. 소진 예상 시점: 내일 밤\n"
+                + "플랜 업그레이드\n사용량 추가 구매\n"
+                + "플랜 사용 한도\n현재 세션\n2시간 10분 후 재설정\n40% 사용됨\n"
+                + "주간 한도\n모든 모델\n토 오후 3:00 재설정\n72% 사용됨\n"
+                + "Sonnet만\n토 오후 3:00 재설정\n15% 사용됨\n마지막 업데이트: 방금 전";
+        assertEquals(72.0, PageUsage.weeklyPercent(page), 1e-9);
+    }
+
+    @Test
+    public void englishPage() {
+        String page = "Plan usage limits\nCurrent session\nResets in 2 hr 10 min\n40% used\n"
+                + "Weekly limits\nLearn more about usage limits\nAll models\nResets Sat 3:00 PM\n72% used\n"
+                + "Opus only\nResets Sat 3:00 PM\n5% used";
+        assertEquals(72.0, PageUsage.weeklyPercent(page), 1e-9);
+    }
+
+    @Test
+    public void weeklyHeadingWhenNoAllModelsRow() {
+        String page = "현재 세션\n12% 사용됨\n주간 한도\n목 오전 4:00 재설정\n35% 사용됨";
+        assertEquals(35.0, PageUsage.weeklyPercent(page), 1e-9);
+        assertEquals(35.5, PageUsage.weeklyPercent("주간 한도\n35,5 %"), 1e-9);
+    }
+
+    @Test
+    public void nothingToTakeWhileLoadingOrWithoutAnchor() {
+        assertNull(PageUsage.weeklyPercent(null));
+        assertNull(PageUsage.weeklyPercent(""));
+        // 아직 막대가 안 그려짐
+        assertNull(PageUsage.weeklyPercent("설정\n사용량\n주간 한도\n모든 모델\n불러오는 중"));
+        // 기준 글자가 없으면 현재 세션 %를 집지 않음
+        assertNull(PageUsage.weeklyPercent("현재 세션\n40% 사용됨"));
+        // 100을 넘는 숫자는 사용량이 아님
+        assertNull(PageUsage.weeklyPercent("모든 모델\n250%"));
+    }
+}
