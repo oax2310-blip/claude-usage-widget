@@ -92,15 +92,27 @@ public class WideModelTest {
     }
 
     @Test
-    public void barFollowsNowWhileStatusFollowsInputTime() {
-        // 입력할 땐 초과였지만(월요일 권장 35.7 < 사용 40) 지금은 권장 누적(64.3)이 사용량을 넘음
-        long inputAt = UsageCalcTest.at(9, 28, 12, 0);
-        WideModel m = model(UsageCalcTest.at(9, 30, 12, 0), 40, inputAt);
+    public void statusAndBarSwitchTogetherAt3am() {
+        // 새벽 2시에 69.0% 입력: 권장 누적 64.3% → 초과
+        long inputAt = UsageCalcTest.at(10, 1, 2, 0);
+        WideModel m = model(UsageCalcTest.at(10, 1, 2, 59), 69, inputAt);
+        assertEquals("64.3%", m.topValue);
+        assertEquals("초과 4.7%p", m.status);
         assertTrue(m.statusOver);
-        assertTrue(m.status.startsWith("초과 "));
+        assertTrue(m.barOver);
+        assertEquals(643, m.barProgress);
+        assertEquals(690, m.barSecondary);
+
+        // 오전 3시 이후: 권장 누적 78.6% → 글자·점·막대 모두 여유
+        m = model(UsageCalcTest.at(10, 1, 4, 59), 69, inputAt);
+        assertEquals("69.0", m.usedNum);
+        assertEquals("78.6%", m.topValue);
+        assertEquals("여유 9.6%p", m.status);
+        assertFalse(m.statusOver);
         assertFalse(m.barOver);
-        assertEquals(400, m.barProgress);
-        assertEquals(643, m.barSecondary);
+        assertEquals(690, m.barProgress);
+        assertEquals(786, m.barSecondary);
+        assertEquals("오늘 14.3% · 2일 10시간 후 초기화", m.meta);
     }
 
     @Test

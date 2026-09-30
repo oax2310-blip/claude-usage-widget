@@ -18,7 +18,7 @@ final class WideModel {
     String topValue;
     /** 여유/초과 — 사용량이 없으면 null */
     String status;
-    /** 입력 시점 기준 권장 누적보다 많이 썼는지(점·글자 빨강) */
+    /** 지금 권장 누적보다 많이 썼는지(점·글자 빨강) */
     boolean statusOver;
 
     String meta;
@@ -45,10 +45,11 @@ final class WideModel {
             m.barSecondary = bar(r.paceUsed);
             return m;
         }
-        m.statusOver = r.paceDiffAtInput < 0;
-        m.status = Fmt.paceStatus(r.paceDiffAtInput);
-        // 막대는 지금 시점 기준: 권장 누적까지는 클레이, 넘친 만큼은 빨강
-        if (r.used <= r.paceUsed) {
+        // 글자·점·막대 모두 지금 권장 누적 기준(오전 3시에 오늘 몫이 더해지면 함께 바뀜)
+        m.statusOver = r.paceDiff < 0;
+        m.status = Fmt.paceStatus(r.paceDiff);
+        // 여유: 사용까지 초록 + 권장 누적까지 연한 초록 / 초과: 권장 누적까지 클레이 + 넘친 만큼 빨강
+        if (!m.statusOver) {
             m.barProgress = bar(r.used);
             m.barSecondary = bar(r.paceUsed);
         } else {

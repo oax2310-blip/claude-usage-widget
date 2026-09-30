@@ -56,7 +56,7 @@ public final class Fmt {
 
     /** 사용량 요약 한 줄: "여유 14.0%p · 남은 기간 하루 20.4%" */
     public static String usageLine(UsageCalc.Result r) {
-        String pace = paceStatus(r.paceDiffAtInput);
+        String pace = paceStatus(r.paceDiff);
         String plan = r.lessThanDay
                 ? "초기화 전까지 " + pct(r.leftLimit)
                 : "남은 기간 하루 " + pct(r.dailyAdjusted);
