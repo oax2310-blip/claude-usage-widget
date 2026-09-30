@@ -15,6 +15,7 @@ import java.util.Map;
 
 /**
  * 홈 화면 위젯. 30분마다 자동 갱신, ↻ 누르면 즉시 갱신, 나머지 부분을 누르면 앱 열림.
+ * 한 줄 위젯은 왼쪽 사용량 숫자를 누르면 앱을 열지 않고 바로 사용량 입력 창이 뜸.
  * 크기에 따라 작은 / 한 줄(5x1) / 큰 레이아웃 중 알맞은 것이 표시됨.
  */
 public class UsageWidget extends AppWidgetProvider {
@@ -61,6 +62,7 @@ public class UsageWidget extends AppWidgetProvider {
         fill(full, r, now, true);
         fill(fullWide, r, now, true);
         for (RemoteViews v : new RemoteViews[] {small, wide, full, fullWide}) bindClicks(ctx, v);
+        bindUsageInput(ctx, wide);
         // 시스템이 위젯 크기에 맞는(들어가면서 가장 가까운) 레이아웃을 고름:
         // 폭 280dp 이상 한 줄 높이 → 한 줄, 두 줄 이상 → 큰 레이아웃
         Map<SizeF, RemoteViews> m = new ArrayMap<>();
@@ -109,14 +111,15 @@ public class UsageWidget extends AppWidgetProvider {
     }
 
     private static void fillWide(RemoteViews v, WideModel m, long now) {
-        v.setTextViewText(R.id.w_pace_num, m.paceNum);
-        v.setViewVisibility(R.id.w_pace_pct, m.showPct ? View.VISIBLE : View.GONE);
+        v.setTextViewText(R.id.w_used_num, m.usedNum);
+        v.setViewVisibility(R.id.w_used_pct, m.showPct ? View.VISIBLE : View.GONE);
+        v.setTextViewText(R.id.w_used_label, m.usedLabel);
         v.setViewVisibility(R.id.w_hint, m.showHint ? View.VISIBLE : View.GONE);
         v.setViewVisibility(R.id.w_top_row, m.showHint ? View.GONE : View.VISIBLE);
         if (!m.showHint) {
             boolean hasStatus = m.status != null;
             v.setViewVisibility(R.id.w_dot, hasStatus ? View.VISIBLE : View.GONE);
-            v.setImageViewResource(R.id.w_dot, m.statusOver ? R.drawable.dot_over : R.drawable.dot_clay);
+            v.setImageViewResource(R.id.w_dot, m.statusOver ? R.drawable.dot_over : R.drawable.dot_ok);
             v.setTextViewText(R.id.w_top_label, m.topLabel);
             v.setTextViewText(R.id.w_top_value, m.topValue);
             v.setViewVisibility(R.id.w_status, hasStatus ? View.VISIBLE : View.GONE);
@@ -126,8 +129,13 @@ public class UsageWidget extends AppWidgetProvider {
         }
         v.setProgressBar(R.id.w_bar, WideModel.BAR_MAX, m.barProgress, false);
         v.setInt(R.id.w_bar, "setSecondaryProgress", m.barSecondary);
+        // 여유: 사용 = 초록, 여유 = 연한 초록 / 초과: 권장 누적까지 클레이, 넘친 만큼 빨강
+        // 사용량 입력 전: 권장 누적 = 반투명 클레이
+        boolean spare = m.status != null && !m.barOver;
+        v.setColorStateList(R.id.w_bar, "setProgressTintList",
+                spare ? R.color.claude_ok_bar : R.color.claude_clay);
         v.setColorStateList(R.id.w_bar, "setSecondaryProgressTintList",
-                m.barOver ? R.color.claude_over : R.color.claude_spare);
+                m.barOver ? R.color.claude_over : spare ? R.color.claude_spare : R.color.claude_pace);
         v.setTextViewText(R.id.w_meta, m.meta);
         v.setTextViewText(R.id.w_refresh_time, Fmt.clock(now));
     }
@@ -143,5 +151,14 @@ public class UsageWidget extends AppWidgetProvider {
         PendingIntent piRefresh = PendingIntent.getBroadcast(ctx, 1, refresh,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         v.setOnClickPendingIntent(R.id.w_refresh, piRefresh);
+    }
+
+    /** 한 줄 위젯: 왼쪽 사용량 숫자를 누르면 사용량 입력 창 */
+    private static void bindUsageInput(Context ctx, RemoteViews v) {
+        Intent input = new Intent(ctx, UsageInputActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pi = PendingIntent.getActivity(ctx, 2, input,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        v.setOnClickPendingIntent(R.id.w_used_box, pi);
     }
 }

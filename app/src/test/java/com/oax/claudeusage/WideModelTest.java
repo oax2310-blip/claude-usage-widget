@@ -42,21 +42,23 @@ public class WideModelTest {
         WideModel m = WideModel.of(UsageCalc.compute(0, 7, RESET, Double.NaN, 0, SEOUL));
         assertTrue(m.showHint);
         assertFalse(m.showPct);
-        assertEquals("--", m.paceNum);
+        assertEquals("--", m.usedNum);
+        assertEquals("사용량 입력", m.usedLabel);
         assertEquals("하루 권장 14.3%", m.meta);
         assertEquals(0, m.barProgress);
         assertEquals(0, m.barSecondary);
     }
 
     @Test
-    public void noUsageShowsCountdownAndPace() {
+    public void noUsageAsksForUsageAndShowsPace() {
         WideModel m = model(WED, Double.NaN, 0);
         assertFalse(m.showHint);
-        assertTrue(m.showPct);
-        assertEquals("64.3", m.paceNum);
-        assertEquals("초기화까지 ", m.topLabel);
-        assertEquals("3일 12시간", m.topValue);
-        assertEquals("오늘 14.3% · 10/3(토) 오후 3:00 초기화", m.meta);
+        assertFalse(m.showPct);
+        assertEquals("--", m.usedNum);
+        assertEquals("사용량 입력", m.usedLabel);
+        assertEquals("권장 ", m.topLabel);
+        assertEquals("64.3%", m.topValue);
+        assertEquals("오늘 14.3% · 3일 12시간 후 초기화", m.meta);
         assertNull(m.status);
         assertEquals(0, m.barProgress);
         assertEquals(643, m.barSecondary);
@@ -66,8 +68,11 @@ public class WideModelTest {
     @Test
     public void underPaceFillsUsedThenSpare() {
         WideModel m = model(WED, 50, WED);
-        assertEquals("사용 ", m.topLabel);
-        assertEquals("50.0%", m.topValue);
+        assertTrue(m.showPct);
+        assertEquals("50.0", m.usedNum);
+        assertEquals("현재 사용", m.usedLabel);
+        assertEquals("권장 ", m.topLabel);
+        assertEquals("64.3%", m.topValue);
         assertEquals("여유 14.3%p", m.status);
         assertFalse(m.statusOver);
         assertEquals("오늘 14.3% · 3일 12시간 후 초기화", m.meta);
@@ -102,7 +107,8 @@ public class WideModelTest {
     public void lastDayShowsPartialAllotment() {
         long now = RESET - 6 * HOUR;
         WideModel m = model(now, 70, now);
-        assertEquals("100.0", m.paceNum);
+        assertEquals("70.0", m.usedNum);
+        assertEquals("100.0%", m.topValue);
         assertEquals("오늘 7.1% · 6시간 0분 후 초기화", m.meta);
     }
 }
