@@ -33,6 +33,23 @@ public class PageUsageTest {
     }
 
     @Test
+    public void otherWeeklyWordings() {
+        assertEquals(64.0, PageUsage.weeklyPercent("현재 세션\n40%\n주별 한도\n64% 사용"), 1e-9);
+        assertEquals(64.0, PageUsage.weeklyPercent("현재 세션\n40%\n매주 재설정되는 한도\n64%"), 1e-9);
+        assertEquals(64.0, PageUsage.weeklyPercent("현재 세션\n40%\n7일 한도\n64%"), 1e-9);
+    }
+
+    @Test
+    public void explainsWhatWasSeen() {
+        assertEquals("모든 모델", PageUsage.anchor("주간 한도\n모든 모델\n72%"));
+        assertEquals("주간", PageUsage.anchor("주간 한도\n72%"));
+        assertNull(PageUsage.anchor("현재 세션\n40%"));
+        assertNull(PageUsage.anchor(null));
+        assertEquals(2, PageUsage.percentCount("40% 사용\n72 % 사용"));
+        assertEquals(0, PageUsage.percentCount(null));
+    }
+
+    @Test
     public void nothingToTakeWhileLoadingOrWithoutAnchor() {
         assertNull(PageUsage.weeklyPercent(null));
         assertNull(PageUsage.weeklyPercent(""));
