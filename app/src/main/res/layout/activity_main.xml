@@ -66,7 +66,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="하루 권장량"
+                        android:text="오늘 권장량"
                         android:textColor="@color/text_secondary"
                         android:textSize="13sp" />
 
@@ -278,7 +278,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:lineSpacingExtra="3dp"
-            android:text="· 하루 권장량 = 100% ÷ 초기화 주기\n· 권장 누적 = 이번 주기 시작부터 지금까지 쓸 수 있는 권장 사용량\n· 위젯 추가: 홈 화면 빈 곳 길게 누르기 → 위젯 → Claude 사용량\n· 위젯은 30분마다 자동 갱신, ↻ 누르면 즉시 갱신\n· 새 버전이 나오면 맨 위에 업데이트 버튼이 떠요"
+            android:text="· 하루 권장량 = 100% ÷ 초기화 주기(7일이면 14.3%)\n· 매일 오전 3시에 그날 몫이 권장 누적에 한 번에 더해져요\n· 초기화 시각이 오전 3시가 아니면 첫날·마지막날이 길이에 비례해 하루 몫을 나눠 가져요(예: 토 오후 3시 → 8일, 첫날·마지막날 7.1%씩)\n· 위젯 추가: 홈 화면 빈 곳 길게 누르기 → 위젯 → Claude 사용량\n· 위젯은 30분마다 자동 갱신, ↻ 누르면 즉시 갱신\n· 새 버전이 나오면 맨 위에 업데이트 버튼이 떠요"
             android:textColor="@color/text_secondary"
             android:textSize="13sp" />
 

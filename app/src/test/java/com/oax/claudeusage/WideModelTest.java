@@ -5,16 +5,41 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.time.ZoneId;
+import java.util.TimeZone;
+
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class WideModelTest {
-    private static final long DAY = UsageCalc.DAY;
     private static final long HOUR = UsageCalc.HOUR;
-    private static final long RESET = 1_800_000_000_000L;
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    /** 초기화: 2026-10-03(토) 오후 3시 */
+    private static final long RESET = UsageCalcTest.at(10, 3, 15, 0);
+    /** 수요일 오전 3시: 권장 누적 64.3%, 초기화까지 3일 12시간 */
+    private static final long WED = UsageCalcTest.at(9, 30, 3, 0);
+
+    private static TimeZone savedTz;
+
+    @BeforeClass
+    public static void useSeoulTime() {
+        savedTz = TimeZone.getDefault();
+        TimeZone.setDefault(TimeZone.getTimeZone(SEOUL));
+    }
+
+    @AfterClass
+    public static void restoreTime() {
+        TimeZone.setDefault(savedTz);
+    }
+
+    private static WideModel model(long now, double used, long usedAt) {
+        return WideModel.of(UsageCalc.compute(RESET, 7, now, used, usedAt, SEOUL));
+    }
 
     @Test
     public void unconfiguredShowsHint() {
-        WideModel m = WideModel.of(UsageCalc.compute(0, 7, RESET, Double.NaN, 0));
+        WideModel m = WideModel.of(UsageCalc.compute(0, 7, RESET, Double.NaN, 0, SEOUL));
         assertTrue(m.showHint);
         assertFalse(m.showPct);
         assertEquals("--", m.paceNum);
@@ -25,61 +50,59 @@ public class WideModelTest {
 
     @Test
     public void noUsageShowsCountdownAndPace() {
-        long now = RESET - (long) (3.5 * DAY);
-        WideModel m = WideModel.of(UsageCalc.compute(RESET, 7, now, Double.NaN, 0));
+        WideModel m = model(WED, Double.NaN, 0);
         assertFalse(m.showHint);
         assertTrue(m.showPct);
-        assertEquals("50.0", m.paceNum);
+        assertEquals("64.3", m.paceNum);
         assertEquals("초기화까지 ", m.topLabel);
         assertEquals("3일 12시간", m.topValue);
+        assertEquals("오늘 14.3% · 10/3(토) 오후 3:00 초기화", m.meta);
         assertNull(m.status);
         assertEquals(0, m.barProgress);
-        assertEquals(500, m.barSecondary);
+        assertEquals(643, m.barSecondary);
         assertFalse(m.barOver);
     }
 
     @Test
     public void underPaceFillsUsedThenSpare() {
-        long now = RESET - (long) (3.5 * DAY);
-        WideModel m = WideModel.of(UsageCalc.compute(RESET, 7, now, 30, now));
+        WideModel m = model(WED, 50, WED);
         assertEquals("사용 ", m.topLabel);
-        assertEquals("30.0%", m.topValue);
-        assertEquals("여유 20.0%p", m.status);
+        assertEquals("50.0%", m.topValue);
+        assertEquals("여유 14.3%p", m.status);
         assertFalse(m.statusOver);
-        assertEquals("하루 14.3% · 3일 12시간 후 초기화", m.meta);
-        assertEquals(300, m.barProgress);
-        assertEquals(500, m.barSecondary);
+        assertEquals("오늘 14.3% · 3일 12시간 후 초기화", m.meta);
+        assertEquals(500, m.barProgress);
+        assertEquals(643, m.barSecondary);
         assertFalse(m.barOver);
     }
 
     @Test
     public void overPaceFillsPaceThenRed() {
-        long now = RESET - (long) (3.5 * DAY);
-        WideModel m = WideModel.of(UsageCalc.compute(RESET, 7, now, 62.5, now));
-        assertEquals("초과 12.5%p", m.status);
+        WideModel m = model(WED, 70, WED);
+        assertEquals("초과 5.7%p", m.status);
         assertTrue(m.statusOver);
-        assertEquals(500, m.barProgress);
-        assertEquals(625, m.barSecondary);
+        assertEquals(643, m.barProgress);
+        assertEquals(700, m.barSecondary);
         assertTrue(m.barOver);
     }
 
     @Test
     public void barFollowsNowWhileStatusFollowsInputTime() {
-        // 입력할 땐 초과였지만(권장 28.6 < 사용 40) 지금은 권장 누적(57.1)이 사용량을 넘음
-        long inputAt = RESET - 5 * DAY;
-        long now = RESET - 3 * DAY;
-        WideModel m = WideModel.of(UsageCalc.compute(RESET, 7, now, 40, inputAt));
+        // 입력할 땐 초과였지만(월요일 권장 35.7 < 사용 40) 지금은 권장 누적(64.3)이 사용량을 넘음
+        long inputAt = UsageCalcTest.at(9, 28, 12, 0);
+        WideModel m = model(UsageCalcTest.at(9, 30, 12, 0), 40, inputAt);
         assertTrue(m.statusOver);
         assertTrue(m.status.startsWith("초과 "));
         assertFalse(m.barOver);
         assertEquals(400, m.barProgress);
-        assertEquals(571, m.barSecondary);
+        assertEquals(643, m.barSecondary);
     }
 
     @Test
-    public void lessThanOneDayUsesHoursInMeta() {
+    public void lastDayShowsPartialAllotment() {
         long now = RESET - 6 * HOUR;
-        WideModel m = WideModel.of(UsageCalc.compute(RESET, 7, now, 70, now));
-        assertEquals("하루 14.3% · 6시간 0분 후 초기화", m.meta);
+        WideModel m = model(now, 70, now);
+        assertEquals("100.0", m.paceNum);
+        assertEquals("오늘 7.1% · 6시간 0분 후 초기화", m.meta);
     }
 }

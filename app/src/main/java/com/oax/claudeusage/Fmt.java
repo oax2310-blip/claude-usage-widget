@@ -63,6 +63,21 @@ public final class Fmt {
         return pace + " · " + plan;
     }
 
+    /** 오늘 몫: 설정 전이면 기본 하루 권장량(100% ÷ 주기) */
+    public static String today(UsageCalc.Result r) {
+        return pct(r.configured ? r.todayAllot : r.dailyBase);
+    }
+
+    /** 날짜 진행: "8일 중 5일째 · 다음 +14.3% 10/1(목) 오전 3:00" */
+    public static String dayLine(UsageCalc.Result r) {
+        if (r.dayIndex == 0) {
+            return "주기 시작 전 · 첫 몫 +" + pct(r.nextAllot) + " " + dateShort(r.nextGrantAt);
+        }
+        String day = r.dayCount + "일 중 " + r.dayIndex + "일째";
+        if (r.nextGrantAt <= 0) return day + " · 마지막 날";
+        return day + " · 다음 +" + pct(r.nextAllot) + " " + dateShort(r.nextGrantAt);
+    }
+
     /** 권장 누적 대비: "여유 7.8%p" / "초과 8.7%p" */
     public static String paceStatus(double diff) {
         return (diff >= 0 ? "여유 " : "초과 ") + pp(diff);

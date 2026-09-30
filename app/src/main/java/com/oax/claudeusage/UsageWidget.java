@@ -72,7 +72,7 @@ public class UsageWidget extends AppWidgetProvider {
     }
 
     private static void fill(RemoteViews v, UsageCalc.Result r, long now, boolean full) {
-        v.setTextViewText(R.id.w_daily, Fmt.pct(r.dailyBase));
+        v.setTextViewText(R.id.w_daily, Fmt.today(r));
         v.setTextViewText(R.id.w_refresh, "↻ " + Fmt.clock(now));
         if (!r.configured) {
             v.setTextViewText(R.id.w_pace, "--");
