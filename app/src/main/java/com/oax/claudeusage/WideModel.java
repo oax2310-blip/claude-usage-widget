@@ -21,7 +21,7 @@ final class WideModel {
 
     String meta;
 
-    /** 막대(0..BAR_MAX): 진행값 = 클레이, 보조 진행값 = 여유(반투명) 또는 초과(빨강) */
+    /** 막대(0..BAR_MAX): 진행값 = 클레이, 보조 진행값 = 여유(연한 초록) 또는 초과(빨강) */
     int barProgress;
     int barSecondary;
     boolean barOver;
