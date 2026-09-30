@@ -28,7 +28,8 @@ public class UsageWidget extends AppWidgetProvider {
         String a = intent.getAction();
         if (ACTION_REFRESH.equals(a)
                 || Intent.ACTION_TIME_CHANGED.equals(a)
-                || Intent.ACTION_TIMEZONE_CHANGED.equals(a)) {
+                || Intent.ACTION_TIMEZONE_CHANGED.equals(a)
+                || Intent.ACTION_MY_PACKAGE_REPLACED.equals(a)) {
             updateAll(ctx);
         }
     }
