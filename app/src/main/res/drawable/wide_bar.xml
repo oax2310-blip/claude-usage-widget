@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 한 줄 위젯 막대(초과·사용량 입력 전): 두 진행값 모두 코드에서 색을 입힘(초과 = 클레이 + 빨강, 사용량 입력 전 = 반투명 클레이).
-     여유일 때는 wide_bar_spare를 씀.
+<!-- 한 줄 위젯 막대: 두 진행값 모두 코드에서 색을 입힘(여유 = 초록 + 연한 초록, 초과 = 클레이 + 빨강, 사용량 입력 전 = 반투명 클레이).
      scale을 써서 채워진 끝도 둥글게 유지 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@android:id/background">
