@@ -36,8 +36,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import java.util.Locale;
-
 /**
  * 사용량 입력 팝업(한 줄 위젯의 숫자를 누르거나 앱에서 열기): 위쪽에 claude.ai 설정 → 사용량 페이지를 띄워
  * 직접 보면서 아래에 현재 사용량(%)을 넣는다. 팝업이 떠 있는 동안에만, 화면에 그려진 페이지 글자에서
@@ -329,13 +327,14 @@ public class UsageInputActivity extends Activity {
         autoTick();
     }
 
-    /** 자동 저장 카운트다운(0.1초 단위): "저장 1.2" → … → "저장 0.1" → 저장하고 닫기 */
+    /** 자동 저장 카운트다운(1초 단위, 남은 초 올림): 1.2초면 "저장 2" → "저장 1" → 저장하고 닫기 */
     private void autoTick() {
         if (autoAt == 0 || isFinishing()) return;
         long left = autoAt - SystemClock.uptimeMillis();
         if (left > 0) {
-            saveBtn.setText(String.format(Locale.KOREA, "저장 %.1f", Math.ceil(left / 100.0) / 10));
-            handler.postDelayed(autoTick, Math.min(100, left));
+            saveBtn.setText("저장 " + (left + 999) / 1000);
+            // 다음 숫자로 바뀌는 순간(남은 시간이 1초 단위로 떨어질 때)에 맞춰 다시 그림
+            handler.postDelayed(autoTick, (left - 1) % 1000 + 1);
         } else {
             autoAt = 0;
             autoSave();
