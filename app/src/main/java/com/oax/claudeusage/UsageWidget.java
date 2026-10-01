@@ -16,7 +16,7 @@ import java.util.Map;
 
 /**
  * 홈 화면 위젯. 30분마다 + 매일 오전 3시(오늘 몫이 더해질 때)·초기화 시각에 자동 갱신,
- * ↻ 누르면 즉시 갱신, 나머지 부분을 누르면 앱 열림.
+ * ↻ 누르면 즉시 갱신하고 입력 팝업이 떠서 claude.ai 사용량을 가져오는 즉시 저장, 나머지 부분을 누르면 앱 열림.
  * 한 줄 위젯은 왼쪽 사용량 숫자를 누르면 앱을 열지 않고 입력 팝업이 뜸(위쪽에 claude.ai 사용량 페이지).
  * 크기에 따라 작은 / 한 줄(5x1) / 큰 레이아웃 중 알맞은 것이 표시됨.
  */
@@ -116,7 +116,7 @@ public class UsageWidget extends AppWidgetProvider {
         v.setProgressBar(R.id.w_pace_bar, 1000, (int) Math.round(r.paceUsed * 10), false);
         if (r.hasUsage) {
             v.setViewVisibility(R.id.w_used_col, View.VISIBLE);
-            v.setTextViewText(R.id.w_used, Fmt.pct(r.used));
+            v.setTextViewText(R.id.w_used, Fmt.usedPct(r.used));
             String line = Fmt.usageLine(r) + " (" + Fmt.age(r.usageAgeMs) + " 입력)";
             boolean over = r.paceDiff < 0;
             v.setTextViewText(over ? R.id.w_usage_over : R.id.w_usage_ok, line);
@@ -166,8 +166,11 @@ public class UsageWidget extends AppWidgetProvider {
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         v.setOnClickPendingIntent(R.id.w_root, piOpen);
 
-        Intent refresh = new Intent(ctx, UsageWidget.class).setAction(ACTION_REFRESH);
-        PendingIntent piRefresh = PendingIntent.getBroadcast(ctx, 1, refresh,
+        // 새로고침: 입력 팝업(위젯도 바로 다시 그림)에서 사용량을 찾으면 기다리지 않고 바로 저장
+        Intent refresh = new Intent(ctx, UsageInputActivity.class)
+                .putExtra(UsageInputActivity.EXTRA_QUICK, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent piRefresh = PendingIntent.getActivity(ctx, 1, refresh,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         v.setOnClickPendingIntent(R.id.w_refresh, piRefresh);
     }

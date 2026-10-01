@@ -69,7 +69,7 @@ public class WideModelTest {
     public void underPaceFillsUsedThenSpare() {
         WideModel m = model(WED, 50, WED);
         assertTrue(m.showPct);
-        assertEquals("50.0", m.usedNum);
+        assertEquals("50", m.usedNum);
         assertEquals("현재 사용", m.usedLabel);
         assertEquals("권장 ", m.topLabel);
         assertEquals("64.3%", m.topValue);
@@ -79,6 +79,15 @@ public class WideModelTest {
         assertEquals(500, m.barProgress);
         assertEquals(643, m.barSecondary);
         assertFalse(m.barOver);
+    }
+
+    @Test
+    public void usedShownWithoutDecimals() {
+        assertEquals("50", model(WED, 49.6, WED).usedNum);
+        assertEquals("49", model(WED, 49.4, WED).usedNum);
+        assertEquals("50%", Fmt.usedPct(49.6));
+        assertEquals("0%", Fmt.usedPct(0));
+        assertEquals("100%", Fmt.usedPct(100));
     }
 
     @Test
@@ -105,7 +114,7 @@ public class WideModelTest {
 
         // 오전 3시 이후: 권장 누적 78.6% → 글자·점·막대 모두 여유
         m = model(UsageCalcTest.at(10, 1, 4, 59), 69, inputAt);
-        assertEquals("69.0", m.usedNum);
+        assertEquals("69", m.usedNum);
         assertEquals("78.6%", m.topValue);
         assertEquals("여유 9.6%p", m.status);
         assertFalse(m.statusOver);
@@ -119,7 +128,7 @@ public class WideModelTest {
     public void lastDayShowsPartialAllotment() {
         long now = RESET - 6 * HOUR;
         WideModel m = model(now, 70, now);
-        assertEquals("70.0", m.usedNum);
+        assertEquals("70", m.usedNum);
         assertEquals("100.0%", m.topValue);
         assertEquals("오늘 7.1% · 6시간 0분 후 초기화", m.meta);
     }

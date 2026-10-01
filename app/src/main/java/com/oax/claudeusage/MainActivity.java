@@ -28,7 +28,7 @@ public class MainActivity extends Activity {
     private TextView tvDaily, tvPace, tvCountdown, tvPaceLabel, tvUsedLabel, tvUsageInfo, tvVersion;
     private ProgressBar pbPace, pbUsed;
     private Button btnReset, btnUpdate;
-    private EditText etPeriod, etUsed;
+    private EditText etPeriod, etUsed, etAutoSave;
     /** 설치 가능한 새 버전(없으면 null) */
     private Updater.Release latest;
     /** '출처를 알 수 없는 앱' 허용하러 설정에 다녀오는 중 */
@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
         btnReset = findViewById(R.id.btn_reset);
         etPeriod = findViewById(R.id.et_period);
         etUsed = findViewById(R.id.et_used);
+        etAutoSave = findViewById(R.id.et_auto_save);
         btnUpdate = findViewById(R.id.btn_update);
         tvVersion = findViewById(R.id.tv_version);
 
@@ -80,6 +81,7 @@ public class MainActivity extends Activity {
         tvVersion.setOnClickListener(v -> checkUpdate(true));
         findViewById(R.id.btn_period).setOnClickListener(v -> applyPeriod());
         findViewById(R.id.btn_save_used).setOnClickListener(v -> saveUsed());
+        findViewById(R.id.btn_auto_save).setOnClickListener(v -> applyAutoSave());
         findViewById(R.id.btn_view_usage).setOnClickListener(v ->
                 startActivity(new Intent(this, UsageInputActivity.class)));
         findViewById(R.id.btn_clear_used).setOnClickListener(v -> {
@@ -95,12 +97,17 @@ public class MainActivity extends Activity {
             if (id == EditorInfo.IME_ACTION_DONE) { saveUsed(); return true; }
             return false;
         });
+        etAutoSave.setOnEditorActionListener((v, id, e) -> {
+            if (id == EditorInfo.IME_ACTION_DONE) { applyAutoSave(); return true; }
+            return false;
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         etPeriod.setText(trim(store.periodDays()));
+        etAutoSave.setText(trim(store.autoSaveSec()));
         handler.post(ticker);
 
         Updater.setListener(this::renderUpdate);
@@ -186,6 +193,22 @@ public class MainActivity extends Activity {
         afterChange();
     }
 
+    /** 입력 팝업이 가져온 값을 자동 저장하기까지 기다리는 시간(0.1초 단위, 0이면 바로) */
+    private void applyAutoSave() {
+        Float v = parse(etAutoSave.getText().toString());
+        if (v == null || v < 0 || v > Store.AUTO_SAVE_MAX) {
+            toast("0~" + trim(Store.AUTO_SAVE_MAX) + "초 사이로 넣어 주세요");
+            etAutoSave.setText(trim(store.autoSaveSec()));
+            return;
+        }
+        float s = Math.round(v * 10) / 10f;
+        store.setAutoSaveSec(s);
+        etAutoSave.setText(trim(s));
+        hideKeyboard();
+        etAutoSave.clearFocus();
+        toast(s == 0 ? "가져오면 바로 저장해요" : "가져오고 " + trim(s) + "초 뒤 저장해요");
+    }
+
     private void saveUsed() {
         Float v = parse(etUsed.getText().toString());
         if (v == null || v < 0 || v > 100) {
@@ -234,7 +257,7 @@ public class MainActivity extends Activity {
         if (r.hasUsage) {
             tvUsedLabel.setVisibility(View.VISIBLE);
             pbUsed.setVisibility(View.VISIBLE);
-            tvUsedLabel.setText("실제 사용 " + Fmt.pct(r.used) + " (" + Fmt.age(r.usageAgeMs) + " 입력)");
+            tvUsedLabel.setText("실제 사용 " + Fmt.usedPct(r.used) + " (" + Fmt.age(r.usageAgeMs) + " 입력)");
             pbUsed.setProgress((int) Math.round(r.used * 10));
 
             boolean over = r.paceDiff < 0;
