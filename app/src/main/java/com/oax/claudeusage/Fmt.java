@@ -12,9 +12,13 @@ public final class Fmt {
         return String.format(Locale.KOREA, "%.1f%%", v);
     }
 
-    /** % 없는 숫자(작은 % 기호를 따로 붙일 때) */
-    public static String num(double v) {
-        return String.format(Locale.KOREA, "%.1f", v);
+    /** 현재 사용량(% 없이 — 작은 % 기호를 따로 붙일 때): 소수점 없이 반올림, claude.ai도 정수 %로 보여 줌 */
+    public static String usedNum(double v) {
+        return String.valueOf(Math.round(v));
+    }
+
+    public static String usedPct(double v) {
+        return usedNum(v) + "%";
     }
 
     /** 퍼센트포인트(부호 없이) */

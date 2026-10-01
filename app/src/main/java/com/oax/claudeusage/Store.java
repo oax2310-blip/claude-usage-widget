@@ -9,6 +9,10 @@ final class Store {
     private static final String K_PERIOD = "period_days";
     private static final String K_USED = "used";
     private static final String K_USED_AT = "used_at";
+    private static final String K_AUTO_SAVE = "auto_save_sec";
+    /** 입력 팝업이 가져온 값을 자동 저장하기까지 기다리는 시간(초) 기본값·최대값 */
+    static final float AUTO_SAVE_DEFAULT = 1.2f;
+    static final float AUTO_SAVE_MAX = 10f;
 
     private final SharedPreferences sp;
 
@@ -26,11 +30,15 @@ final class Store {
 
     long usedAt() { return sp.getLong(K_USED_AT, 0L); }
 
+    float autoSaveSec() { return sp.getFloat(K_AUTO_SAVE, AUTO_SAVE_DEFAULT); }
+
     void setResetAt(long t) { sp.edit().putLong(K_RESET, t).apply(); }
 
     void setPeriodDays(float d) { sp.edit().putFloat(K_PERIOD, d).apply(); }
 
     void setUsed(float v, long at) { sp.edit().putFloat(K_USED, v).putLong(K_USED_AT, at).apply(); }
+
+    void setAutoSaveSec(float s) { sp.edit().putFloat(K_AUTO_SAVE, s).apply(); }
 
     void clearUsed() { sp.edit().remove(K_USED).remove(K_USED_AT).apply(); }
 

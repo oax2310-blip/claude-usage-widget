@@ -12,6 +12,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.text.Editable;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -35,11 +36,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import java.util.Locale;
+
 /**
  * 사용량 입력 팝업(한 줄 위젯의 숫자를 누르거나 앱에서 열기): 위쪽에 claude.ai 설정 → 사용량 페이지를 띄워
  * 직접 보면서 아래에 현재 사용량(%)을 넣는다. 팝업이 떠 있는 동안에만, 화면에 그려진 페이지 글자에서
- * 주간 사용량을 찾아 입력 칸에 채우고(폰 안에서만 읽고 서버에 따로 요청하지 않음), 2초 뒤 자동으로 저장하고 닫는다
- * (그 사이 숫자 키·입력 칸·페이지를 만지면 자동 저장 취소).
+ * 주간 사용량을 찾아 입력 칸에 채우고(폰 안에서만 읽고 서버에 따로 요청하지 않음), 앱에서 정한 시간(기본 1.2초)
+ * 뒤 자동으로 저장하고 닫는다(그 사이 숫자 키·입력 칸·페이지를 만지면 자동 저장 취소).
+ * 위젯의 새로고침(↻)으로 열면 기다리지 않고 찾는 즉시 저장한다.
  * 앱이 알아서 claude.ai에 접속하지는 않는다(자동 접근은 Claude 약관 위반).
  * claude.ai 로그인은 이 앱의 WebView에만 저장되고 백업에서 빠지며, '로그아웃'으로 지울 수 있다.
  */
@@ -56,11 +60,11 @@ public class UsageInputActivity extends Activity {
             + "var src='설정 창 '+ds.length+'개';"
             + "if(!t.trim()){t=document.body?document.body.innerText:'';src='페이지 전체';}"
             + "return JSON.stringify({src:src,text:t});})()";
-    /** 사용량 막대가 그려질 때까지 이 간격으로 이 횟수만큼(약 18초) 다시 봄 */
-    private static final long READ_EVERY = 600;
-    private static final int READ_MAX = 30;
-    /** 찾은 값을 보여 주고 이만큼(초) 뒤 자동 저장 — 잘못 집었으면 그 사이 고칠 수 있게 */
-    private static final int AUTO_SAVE_SECONDS = 2;
+    /** 사용량 막대가 그려질 때까지 이 간격으로 이 횟수만큼(약 18초) 다시 봄 — 짧을수록 그려지자마자 찾음 */
+    private static final long READ_EVERY = 300;
+    private static final int READ_MAX = 60;
+    /** 위젯의 새로고침(↻)으로 열었는지: 그러면 찾은 값을 기다리지 않고 바로 저장 */
+    static final String EXTRA_QUICK = "com.oax.claudeusage.QUICK";
 
     private Store store;
     private EditText et;
@@ -79,8 +83,10 @@ public class UsageInputActivity extends Activity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable reader = this::readPage;
     private Button saveBtn;
-    /** 자동 저장까지 남은 초(0이면 자동 저장 안 함) */
-    private int autoLeft;
+    /** 찾은 값을 보여 주고 이만큼(ms) 뒤 자동 저장 — 잘못 집었으면 그 사이 고칠 수 있게(0이면 바로) */
+    private long autoSaveMs;
+    /** 자동 저장할 시각(uptime, 0이면 자동 저장 대기 중 아님) */
+    private long autoAt;
     private final Runnable autoTick = this::autoTick;
 
     @Override
@@ -88,6 +94,10 @@ public class UsageInputActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_usage_input);
         store = new Store(this);
+        boolean quick = getIntent().getBooleanExtra(EXTRA_QUICK, false);
+        autoSaveMs = quick ? 0 : Math.round(store.autoSaveSec() * 1000.0);
+        // 새로고침(↻)이면 예전처럼 위젯부터 바로 다시 그림(팝업을 그냥 닫아도 시각·권장 누적은 갱신)
+        if (quick) UsageWidget.updateAll(this);
         UsageCalc.Result r = store.compute(System.currentTimeMillis());
 
         // 바깥(어두운 곳)을 누르면 닫기. 상태바·내비게이션바·키보드에 가리지 않도록 여백
@@ -311,26 +321,37 @@ public class UsageInputActivity extends Activity {
         et.requestFocus();
         et.selectAll();
         setLabel("가져온 값", R.color.accent, 15, null);
-        autoLeft = AUTO_SAVE_SECONDS;
-        saveBtn.setText("저장 " + autoLeft);
-        handler.postDelayed(autoTick, 1000);
+        if (autoSaveMs <= 0) {
+            autoSave();
+            return;
+        }
+        autoAt = SystemClock.uptimeMillis() + autoSaveMs;
+        autoTick();
     }
 
-    /** 자동 저장 카운트다운: "저장 2" → "저장 1" → 저장하고 닫기 */
+    /** 자동 저장 카운트다운(0.1초 단위): "저장 1.2" → … → "저장 0.1" → 저장하고 닫기 */
     private void autoTick() {
-        if (autoLeft <= 0 || isFinishing()) return;
-        if (--autoLeft > 0) {
-            saveBtn.setText("저장 " + autoLeft);
-            handler.postDelayed(autoTick, 1000);
-        } else if (save()) {
+        if (autoAt == 0 || isFinishing()) return;
+        long left = autoAt - SystemClock.uptimeMillis();
+        if (left > 0) {
+            saveBtn.setText(String.format(Locale.KOREA, "저장 %.1f", Math.ceil(left / 100.0) / 10));
+            handler.postDelayed(autoTick, Math.min(100, left));
+        } else {
+            autoAt = 0;
+            autoSave();
+        }
+    }
+
+    private void autoSave() {
+        if (save()) {
             Toast.makeText(getApplicationContext(), "claude.ai에서 " + et.getText() + "%를 가져와 저장했어요",
                     Toast.LENGTH_SHORT).show();
         }
     }
 
     private void cancelAutoSave() {
-        if (autoLeft <= 0) return;
-        autoLeft = 0;
+        if (autoAt == 0) return;
+        autoAt = 0;
         handler.removeCallbacks(autoTick);
         saveBtn.setText("저장");
     }

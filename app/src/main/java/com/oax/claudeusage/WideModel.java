@@ -30,7 +30,7 @@ final class WideModel {
 
     static WideModel of(UsageCalc.Result r) {
         WideModel m = new WideModel();
-        m.usedNum = r.hasUsage ? Fmt.num(r.used) : "--";
+        m.usedNum = r.hasUsage ? Fmt.usedNum(r.used) : "--";
         m.showPct = r.hasUsage;
         m.usedLabel = r.hasUsage ? "현재 사용" : "사용량 입력";
         if (!r.configured) {
