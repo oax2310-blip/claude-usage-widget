@@ -1,30 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 앱 아이콘: 아래가 트인 270° 게이지. 클레이 호 = 사용량, 아이보리 눈금 = 권장 누적(여유 있는 모습).
-     1x1 게이지 위젯(GaugeIcon)이 같은 좌표로 실제 값을 그림 -->
+<!-- 테마 아이콘(Android 13+): 런처가 알파만 보고 색을 입힘 — 트랙은 흐리게 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- 트랙 -->
     <path
         android:pathData="M37.74,72.26 A23,23 0 1,1 70.26,72.26"
         android:strokeWidth="9"
-        android:strokeColor="#3A3935"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.35"
         android:strokeLineCap="round"
         android:fillColor="#00000000" />
-    <!-- 사용량 -->
     <path
         android:pathData="M37.74,72.26 A23,23 0 0,1 65.5,36.08"
         android:strokeWidth="9"
-        android:strokeColor="#D97757"
+        android:strokeColor="#FFFFFF"
         android:strokeLineCap="round"
         android:fillColor="#00000000" />
-    <!-- 권장 누적 눈금 -->
     <path
         android:pathData="M68.1,50.87 L83.13,45.4"
         android:strokeWidth="3.5"
-        android:strokeColor="#FAF9F5"
+        android:strokeColor="#FFFFFF"
         android:strokeLineCap="round"
         android:fillColor="#00000000" />
 </vector>

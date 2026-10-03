@@ -9,7 +9,13 @@
     <color name="used">@android:color/system_accent3_600</color>
     <color name="track">@android:color/system_neutral2_200</color>
     <color name="warn">#C62828</color>
-    <color name="icon_bg">#2F5D8A</color>
+    <!-- 앱 아이콘·1x1 게이지 위젯(라이트·다크 같은 색) -->
+    <color name="icon_bg">#141413</color>
+    <color name="gauge_track">#3A3935</color>
+    <color name="gauge_ok">#5BD27A</color>
+    <color name="gauge_over">#FF7B6E</color>
+    <color name="gauge_text">#FAF9F5</color>
+    <color name="gauge_sub">#A6A39A</color>
     <!-- 한 줄(5x1) 위젯: Claude 톤, 배경 투명 (라이트 = 어두운 글자) -->
     <color name="claude_fg">#141413</color>
     <color name="claude_sub">#67655E</color>
