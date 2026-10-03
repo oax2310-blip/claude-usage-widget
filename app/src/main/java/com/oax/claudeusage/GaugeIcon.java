@@ -27,7 +27,7 @@ final class GaugeIcon {
         Canvas c = new Canvas(b);
         // 배경은 이 폰의 아이콘 모양(원·둥근 사각 등)대로 — 홈 화면의 다른 앱 아이콘과 같은 모양
         AdaptiveIconDrawable shape = new AdaptiveIconDrawable(
-                new ColorDrawable(ctx.getColor(R.color.icon_bg)), null);
+                new ColorDrawable(ctx.getColor(R.color.gauge_bg)), null);
         shape.setBounds(0, 0, size, size);
         shape.draw(c);
 
