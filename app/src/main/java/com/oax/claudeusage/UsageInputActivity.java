@@ -36,11 +36,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import java.time.ZoneId;
+
 /**
  * 사용량 입력 팝업(한 줄 위젯의 숫자를 누르거나 앱에서 열기): 위쪽에 claude.ai 설정 → 사용량 페이지를 띄워
  * 직접 보면서 아래에 현재 사용량(%)을 넣는다. 팝업이 떠 있는 동안에만, 화면에 그려진 페이지 글자에서
  * 주간 사용량을 찾아 입력 칸에 채우고(폰 안에서만 읽고 서버에 따로 요청하지 않음), 앱에서 정한 시간(기본 1.2초)
  * 뒤 자동으로 저장하고 닫는다(그 사이 숫자 키·입력 칸·페이지를 만지면 자동 저장 취소).
+ * 같은 때 5시간(현재 세션) 사용량과 그 초기화 시각도 읽어 두었다가 저장할 때 함께 저장한다(위젯 아랫줄).
  * 위젯의 새로고침(↻)으로 열면 기다리지 않고 찾는 즉시 저장한다.
  * 앱이 알아서 claude.ai에 접속하지는 않는다(자동 접근은 Claude 약관 위반).
  * claude.ai 로그인은 이 앱의 WebView에만 저장되고 백업에서 빠지며, '로그아웃'으로 지울 수 있다.
@@ -78,6 +81,8 @@ public class UsageInputActivity extends Activity {
     private int readTries;
     /** 마지막으로 읽은 주소·읽은 곳·글자 — 못 가져왔을 때 '이유 보기'에 보여 줌(폰 밖으로 안 나감) */
     private String seenUrl, seenSrc, seenText;
+    /** 주간 사용량을 찾을 때 함께 읽은 5시간 사용량(못 찾았으면 null) — 저장할 때 함께 저장 */
+    private PageUsage.SessionRead session;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable reader = this::readPage;
     private Button saveBtn;
@@ -95,7 +100,7 @@ public class UsageInputActivity extends Activity {
         boolean quick = getIntent().getBooleanExtra(EXTRA_QUICK, false);
         autoSaveMs = quick ? 0 : Math.round(store.autoSaveSec() * 1000.0);
         // 새로고침(↻)이면 예전처럼 위젯부터 바로 다시 그림(팝업을 그냥 닫아도 시각·권장 누적은 갱신)
-        if (quick) UsageWidget.updateAll(this);
+        if (quick) UsageWidgetWide.updateAll(this);
         UsageCalc.Result r = store.compute(System.currentTimeMillis());
 
         // 바깥(어두운 곳)을 누르면 닫기. 상태바·내비게이션바·키보드에 가리지 않도록 여백
@@ -302,6 +307,7 @@ public class UsageInputActivity extends Activity {
             Double p = PageUsage.weeklyPercent(seenText);
             if (p != null) {
                 reading = false;
+                session = PageUsage.session(seenText, System.currentTimeMillis(), ZoneId.systemDefault());
                 fill(p);
             } else if (++readTries < READ_MAX) {
                 handler.postDelayed(reader, READ_EVERY);
@@ -343,8 +349,9 @@ public class UsageInputActivity extends Activity {
 
     private void autoSave() {
         if (save()) {
-            Toast.makeText(getApplicationContext(), "claude.ai에서 " + et.getText() + "%를 가져와 저장했어요",
-                    Toast.LENGTH_SHORT).show();
+            String h5 = session == null ? "" : " · 5시간 " + Fmt.usedPct(session.percent);
+            Toast.makeText(getApplicationContext(), "claude.ai에서 주간 " + et.getText() + "%" + h5
+                    + "를 가져와 저장했어요", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -367,10 +374,14 @@ public class UsageInputActivity extends Activity {
     private void showWhy() {
         String text = seenText == null ? "" : seenText;
         String anchor = PageUsage.anchor(text);
+        PageUsage.SessionRead s = PageUsage.session(text, System.currentTimeMillis(), ZoneId.systemDefault());
         StringBuilder m = new StringBuilder()
                 .append("주소: ").append(seenUrl == null ? "(없음)" : seenUrl).append('\n')
                 .append("읽은 곳: ").append(seenSrc == null ? "(못 읽음)" : seenSrc).append('\n')
                 .append("기준 글자(모든 모델·주간 등): ").append(anchor == null ? "못 찾음" : "'" + anchor + "' 찾음")
+                .append('\n')
+                .append("5시간(현재 세션): ").append(s == null ? "못 찾음" : Fmt.usedPct(s.percent)
+                        + (s.resetAt > 0 ? ", " + Fmt.clock(s.resetAt) + " 초기화" : ", 초기화 시각 못 읽음"))
                 .append('\n')
                 .append("% 숫자: ").append(PageUsage.percentCount(text)).append("개\n\n")
                 .append("읽은 글자:\n").append(text.length() > 1500 ? text.substring(0, 1500) + "…" : text);
@@ -455,12 +466,13 @@ public class UsageInputActivity extends Activity {
         }
         if (store.resetAt() <= 0) toast("초기화 시각도 설정해야 페이스 비교가 돼요");
         store.setUsed(v, System.currentTimeMillis());
+        if (session != null) store.setSession((float) session.percent, session.resetAt, session.at);
         done();
         return true;
     }
 
     private void done() {
-        UsageWidget.updateAll(this);
+        UsageWidgetWide.updateAll(this);
         finish();
     }
 

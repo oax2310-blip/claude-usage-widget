@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 앱 아이콘: 먹색 배경에 아래가 트인 270° 게이지 + 가운데 흰 Claude 로고.
-     클레이 호 = 사용량, 아이보리 눈금 = 권장 누적.
-     1x1 게이지 위젯(GaugeIcon)이 같은 좌표로 실제 값을 그림(가운데는 로고 대신 사용량 숫자) -->
+     클레이 호 = 사용량, 아이보리 눈금 = 권장 누적(그림일 뿐 실제 값은 아님) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"

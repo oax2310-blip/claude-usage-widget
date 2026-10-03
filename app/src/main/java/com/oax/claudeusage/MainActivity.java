@@ -124,7 +124,7 @@ public class MainActivity extends Activity {
         super.onPause();
         handler.removeCallbacks(ticker);
         Updater.setListener(null);
-        UsageWidget.updateAll(this);
+        UsageWidgetWide.updateAll(this);
     }
 
     private void checkUpdate(boolean manual) {
@@ -224,7 +224,7 @@ public class MainActivity extends Activity {
 
     private void afterChange() {
         render();
-        UsageWidget.updateAll(this);
+        UsageWidgetWide.updateAll(this);
     }
 
     private void render() {

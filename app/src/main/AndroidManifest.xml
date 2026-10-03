@@ -37,10 +37,11 @@
             android:theme="@style/InputTheme"
             android:windowSoftInputMode="stateAlwaysHidden|adjustResize" />
 
+        <!-- 홈 화면 위젯은 한 줄(5x1) 하나. 이미 놓아 둔 위젯이 그대로 이어지도록 이름(.UsageWidgetWide)은 유지 -->
         <receiver
-            android:name=".UsageWidget"
+            android:name=".UsageWidgetWide"
             android:exported="true"
-            android:label="@string/app_name">
+            android:label="@string/widget_wide_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="android.intent.action.TIME_SET" />
@@ -49,32 +50,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/usage_widget_info" />
-        </receiver>
-
-        <receiver
-            android:name=".UsageWidgetWide"
-            android:exported="true"
-            android:label="@string/widget_wide_label">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
                 android:resource="@xml/usage_widget_wide_info" />
-        </receiver>
-
-        <!-- 1x1 게이지: 앱 아이콘 대신 홈 화면에 두면 사용량이 바뀔 때마다 게이지가 바뀜 -->
-        <receiver
-            android:name=".UsageWidgetIcon"
-            android:exported="true"
-            android:label="@string/widget_icon_label">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/usage_widget_icon_info" />
         </receiver>
 
         <receiver

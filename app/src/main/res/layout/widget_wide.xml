@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 한 줄(5x1) 위젯: 왼쪽 현재 사용량(누르면 바로 입력) · 가운데 권장 누적 + 막대 + 하루·초기화 · 오른쪽 새로고침 -->
+<!-- 한 줄(5x1) 위젯: 왼쪽 주간 사용량(누르면 바로 입력) · 가운데 권장 누적·여유/초과·주간 초기화까지 + 주간 막대
+     + 5시간 막대·남은 시간 · 오른쪽 새로고침 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
@@ -111,6 +112,20 @@
                 android:textColor="@color/claude_ok_text"
                 android:textSize="12sp"
                 android:textStyle="bold" />
+
+            <!-- 주간 초기화까지 남은 시간: 남는 자리를 채워 오른쪽 끝에(좁으면 이것부터 줄어듦) -->
+            <TextView
+                android:id="@+id/w_reset_in"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:fontFeatureSettings="tnum"
+                android:gravity="end"
+                android:maxLines="1"
+                android:textColor="@color/claude_sub"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <TextView
@@ -135,17 +150,57 @@
             android:minHeight="10dp"
             android:progressDrawable="@drawable/wide_bar" />
 
-        <TextView
-            android:id="@+id/w_meta"
+        <!-- 5시간(현재 세션): 라벨 · 얇은 막대 · 값 · 남은 시간 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:ellipsize="end"
-            android:fontFeatureSettings="tnum"
-            android:maxLines="1"
-            android:text="하루 권장 14.3%"
-            android:textColor="@color/claude_sub"
-            android:textSize="11sp" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:maxLines="1"
+                android:text="5시간"
+                android:textColor="@color/claude_sub"
+                android:textSize="11sp" />
+
+            <ProgressBar
+                android:id="@+id/w_session_bar"
+                style="@android:style/Widget.Material.ProgressBar.Horizontal"
+                android:layout_width="0dp"
+                android:layout_height="4dp"
+                android:layout_weight="1"
+                android:max="1000"
+                android:maxHeight="4dp"
+                android:minHeight="4dp"
+                android:progressDrawable="@drawable/session_bar" />
+
+            <TextView
+                android:id="@+id/w_session_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:fontFeatureSettings="tnum"
+                android:maxLines="1"
+                android:text="--"
+                android:textColor="@color/claude_sub"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/w_session_rest"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:fontFeatureSettings="tnum"
+                android:maxLines="1"
+                android:textColor="@color/claude_sub"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
