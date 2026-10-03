@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 한 줄 위젯의 5시간 막대(얇게): 채운 부분 색은 코드에서 입힘(평소 무채색, 90% 넘으면 빨강).
+     scale을 써서 채워진 끝도 둥글게 유지 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@android:id/background">
+        <shape>
+            <corners android:radius="2dp" />
+            <solid android:color="@color/claude_track" />
+        </shape>
+    </item>
+    <item android:id="@android:id/progress">
+        <scale
+            android:scaleGravity="left|center_vertical"
+            android:scaleWidth="100%">
+            <shape>
+                <corners android:radius="2dp" />
+                <solid android:color="@color/claude_session" />
+            </shape>
+        </scale>
+    </item>
+</layer-list>

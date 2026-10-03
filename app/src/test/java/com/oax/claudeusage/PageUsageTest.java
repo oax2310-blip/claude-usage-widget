@@ -1,11 +1,23 @@
 package com.oax.claudeusage;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+
+import java.time.ZoneId;
 
 import org.junit.Test;
 
 public class PageUsageTest {
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+    private static final long HOUR = UsageCalc.HOUR;
+    private static final long MINUTE = UsageCalc.MINUTE;
+    /** 읽은 시각: 2026-10-03(토) 오전 8시 */
+    private static final long NOW = UsageCalcTest.at(10, 3, 8, 0);
+
+    private static PageUsage.SessionRead session(String page) {
+        return PageUsage.session(page, NOW, SEOUL);
+    }
     /** 실제 폰 화면(Pro, 2026-10) 그대로 */
     @Test
     public void realKoreanProPage() {
@@ -73,5 +85,67 @@ public class PageUsageTest {
         assertNull(PageUsage.weeklyPercent("현재 세션\n40% 사용됨"));
         // 100을 넘는 숫자는 사용량이 아님
         assertNull(PageUsage.weeklyPercent("모든 모델\n250%"));
+    }
+
+    @Test
+    public void sessionFromRealKoreanPage() {
+        String page = "사용량\nPro\n플랜 업그레이드\n"
+                + "현재 세션\n오전 10:00에 재설정\n62% 사용됨\n"
+                + "이번 주\n재설정: (토요일) 오후 3:00\n77% 사용됨\n제한 초기화";
+        PageUsage.SessionRead s = session(page);
+        assertNotNull(s);
+        assertEquals(62.0, s.percent, 1e-9);
+        assertEquals(UsageCalcTest.at(10, 3, 10, 0), s.resetAt);
+        assertEquals(NOW, s.at);
+        // 주간은 그대로
+        assertEquals(77.0, PageUsage.weeklyPercent(page), 1e-9);
+    }
+
+    @Test
+    public void sessionResetAsTimeLeft() {
+        PageUsage.SessionRead s = session("플랜 사용 한도\n현재 세션\n2시간 10분 후 재설정\n40% 사용됨\n"
+                + "주간 한도\n모든 모델\n토 오후 3:00 재설정\n72% 사용됨");
+        assertEquals(40.0, s.percent, 1e-9);
+        assertEquals(NOW + 2 * HOUR + 10 * MINUTE, s.resetAt);
+        assertEquals(NOW + 45 * MINUTE, session("현재 세션\n45분 후 재설정\n90% 사용됨").resetAt);
+        assertEquals(NOW + 3 * HOUR, session("현재 세션\n3시간 후 재설정\n90% 사용됨").resetAt);
+    }
+
+    @Test
+    public void sessionFromEnglishPage() {
+        PageUsage.SessionRead s = session("Plan usage limits\nCurrent session\nResets in 2 hr 10 min\n40% used\n"
+                + "Weekly limits\nAll models\nResets Sat 3:00 PM\n72% used");
+        assertEquals(40.0, s.percent, 1e-9);
+        assertEquals(NOW + 2 * HOUR + 10 * MINUTE, s.resetAt);
+        assertEquals(NOW + 45 * MINUTE, session("Current session\nResets in 45 min\n9% used").resetAt);
+        assertEquals(UsageCalcTest.at(10, 3, 11, 30),
+                session("Current session\nResets 11:30 AM\n9% used").resetAt);
+    }
+
+    @Test
+    public void sessionResetAfterMidnight() {
+        // 밤 11시 반에 "오전 2:00에 재설정" → 다음 날 오전 2시
+        long late = UsageCalcTest.at(10, 3, 23, 30);
+        PageUsage.SessionRead s = PageUsage.session("현재 세션\n오전 2:00에 재설정\n12% 사용됨", late, SEOUL);
+        assertEquals(UsageCalcTest.at(10, 4, 2, 0), s.resetAt);
+        // 오후 12시 = 정오
+        assertEquals(UsageCalcTest.at(10, 3, 12, 30),
+                session("현재 세션\n오후 12:30에 재설정\n12% 사용됨").resetAt);
+    }
+
+    @Test
+    public void sessionWithoutResetTime() {
+        PageUsage.SessionRead s = session("현재 세션\n0% 사용됨\n주간 한도\n35% 사용됨");
+        assertEquals(0.0, s.percent, 1e-9);
+        assertEquals(0, s.resetAt);
+    }
+
+    @Test
+    public void sessionNeverTakesWeeklyPercent() {
+        // 세션 막대가 아직 안 그려졌을 때 주간 칸의 %를 집지 않음
+        assertNull(session("현재 세션\n불러오는 중\n주간 한도\n모든 모델\n72% 사용됨"));
+        assertNull(session("주간 한도\n모든 모델\n72% 사용됨"));
+        assertNull(session(null));
+        assertNull(session(""));
     }
 }
