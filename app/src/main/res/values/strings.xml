@@ -5,5 +5,5 @@
     <string name="widget_wide_label">Claude 사용량 한 줄</string>
     <string name="widget_wide_desc">한 줄(5x1): 현재 사용량(누르면 claude.ai 사용량 페이지를 보며 입력)과 권장 누적 막대</string>
     <string name="widget_icon_label">Claude 사용량 게이지</string>
-    <string name="widget_icon_desc">1x1 게이지: 앱 아이콘 모양에 현재 사용량(호)과 권장 누적(눈금)을 그려 줌 — 누르면 사용량 입력</string>
+    <string name="widget_icon_desc">1x1 게이지: 앱 아이콘 모양에 현재 사용량(호: 여유면 초록, 초과면 빨강)과 권장 누적(눈금)을 그려 줌 — 누르면 사용량 입력</string>
 </resources>

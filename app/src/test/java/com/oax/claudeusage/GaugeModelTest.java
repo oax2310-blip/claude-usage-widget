@@ -44,6 +44,7 @@ public class GaugeModelTest {
         assertEquals("--", m.usedNum);
         assertFalse(m.showPct);
         assertFalse(m.showPace);
+        assertFalse(m.over);
         assertEquals(0f, m.okSweep, EPS);
         assertEquals(0f, m.overSweep, EPS);
         assertEquals("Claude 사용량: 초기화 시각을 설정하세요", m.description);
@@ -62,10 +63,11 @@ public class GaugeModelTest {
     }
 
     @Test
-    public void underPaceFillsUsedInClay() {
+    public void underPaceFillsUsedInGreen() {
         GaugeModel m = model(WED, 50, WED);
         assertEquals("50", m.usedNum);
         assertTrue(m.showPct);
+        assertFalse(m.over);
         assertEquals(135f, m.okSweep, EPS);
         assertEquals(0f, m.overSweep, EPS);
         assertEquals(PACE_SWEEP, m.paceSweep, EPS);
@@ -76,6 +78,7 @@ public class GaugeModelTest {
     public void overPaceFillsClayToPaceThenRed() {
         GaugeModel m = model(WED, 70, WED);
         assertEquals("70", m.usedNum);
+        assertTrue(m.over);
         assertEquals(PACE_SWEEP, m.okSweep, EPS);
         assertEquals(189f - PACE_SWEEP, m.overSweep, EPS);
         assertEquals(189f, m.okSweep + m.overSweep, EPS);
@@ -93,8 +96,10 @@ public class GaugeModelTest {
     public void paceTickMovesAt3am() {
         long inputAt = UsageCalcTest.at(10, 1, 2, 0);
         GaugeModel before = model(UsageCalcTest.at(10, 1, 2, 59), 69, inputAt);
+        assertTrue(before.over);
         assertTrue(before.overSweep > 0);
         GaugeModel after = model(UsageCalcTest.at(10, 1, 4, 59), 69, inputAt);
+        assertFalse(after.over);
         assertEquals(0f, after.overSweep, EPS);
         assertEquals(69 * 2.7f, after.okSweep, EPS);
         assertEquals(550f / 7f * 2.7f, after.paceSweep, EPS);

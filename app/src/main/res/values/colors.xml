@@ -12,6 +12,7 @@
     <!-- 앱 아이콘·1x1 게이지 위젯(라이트·다크 같은 색) -->
     <color name="icon_bg">#141413</color>
     <color name="gauge_track">#3A3935</color>
+    <color name="gauge_ok">#5BD27A</color>
     <color name="gauge_over">#FF7B6E</color>
     <color name="gauge_text">#FAF9F5</color>
     <color name="gauge_sub">#A6A39A</color>

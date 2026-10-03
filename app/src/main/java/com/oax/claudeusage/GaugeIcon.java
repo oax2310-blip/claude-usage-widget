@@ -12,6 +12,7 @@ import android.graphics.drawable.ColorDrawable;
 
 /**
  * 1x1 게이지 위젯 그림: 앱 아이콘과 같은 게이지에 실제 사용량(호)·권장 누적(눈금)·사용량 숫자를 그림.
+ * 여유면 사용량 호가 초록, 권장 누적을 넘기면 권장 누적까지 클레이 + 넘친 만큼 빨강.
  * 좌표는 아이콘 벡터(ic_launcher_foreground)와 같은 108 격자이고, 아이콘처럼 가운데 72(18~90)만 보임.
  */
 final class GaugeIcon {
@@ -41,7 +42,7 @@ final class GaugeIcon {
         arc(c, oval, p, ctx.getColor(R.color.gauge_track), 0f, GaugeModel.SWEEP);
         // 넘친 부분을 먼저 그리고 클레이를 위에: 경계가 클레이의 둥근 끝으로 이어짐
         arc(c, oval, p, ctx.getColor(R.color.gauge_over), m.okSweep, m.overSweep);
-        arc(c, oval, p, ctx.getColor(R.color.claude_clay), 0f, m.okSweep);
+        arc(c, oval, p, ctx.getColor(m.over ? R.color.claude_clay : R.color.gauge_ok), 0f, m.okSweep);
 
         if (m.showPace) {
             double a = Math.toRadians(GaugeModel.START + m.paceSweep);
