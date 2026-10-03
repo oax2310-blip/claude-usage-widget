@@ -64,6 +64,19 @@
                 android:resource="@xml/usage_widget_wide_info" />
         </receiver>
 
+        <!-- 1x1 게이지: 앱 아이콘 대신 홈 화면에 두면 사용량이 바뀔 때마다 게이지가 바뀜 -->
+        <receiver
+            android:name=".UsageWidgetIcon"
+            android:exported="true"
+            android:label="@string/widget_icon_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/usage_widget_icon_info" />
+        </receiver>
+
         <receiver
             android:name=".InstallReceiver"
             android:exported="false" />

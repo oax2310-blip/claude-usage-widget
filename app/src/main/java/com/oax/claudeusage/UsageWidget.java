@@ -19,13 +19,14 @@ import java.util.Map;
  * ↻ 누르면 즉시 갱신하고 입력 팝업이 떠서 claude.ai 사용량을 가져오는 즉시 저장, 나머지 부분을 누르면 앱 열림.
  * 한 줄 위젯은 왼쪽 사용량 숫자를 누르면 앱을 열지 않고 입력 팝업이 뜸(위쪽에 claude.ai 사용량 페이지).
  * 크기에 따라 작은 / 한 줄(5x1) / 큰 레이아웃 중 알맞은 것이 표시됨.
+ * 1x1 게이지 위젯(UsageWidgetIcon)도 여기서 함께 갱신됨.
  */
 public class UsageWidget extends AppWidgetProvider {
     static final String ACTION_REFRESH = "com.oax.claudeusage.REFRESH";
 
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
-        update(ctx, mgr, ids);
+        update(ctx, mgr, ids, false);
     }
 
     @Override
@@ -42,16 +43,19 @@ public class UsageWidget extends AppWidgetProvider {
 
     static void updateAll(Context ctx) {
         AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
-        for (Class<?> c : new Class<?>[] {UsageWidget.class, UsageWidgetWide.class}) {
+        for (Class<?> c : new Class<?>[] {UsageWidget.class, UsageWidgetWide.class, UsageWidgetIcon.class}) {
             int[] ids = mgr.getAppWidgetIds(new ComponentName(ctx, c));
-            if (ids != null && ids.length > 0) update(ctx, mgr, ids);
+            if (ids != null && ids.length > 0) update(ctx, mgr, ids, c == UsageWidgetIcon.class);
         }
     }
 
-    private static void update(Context ctx, AppWidgetManager mgr, int[] ids) {
+    /** @param gauge 1x1 게이지 위젯이면 true */
+    static void update(Context ctx, AppWidgetManager mgr, int[] ids, boolean gauge) {
         long now = System.currentTimeMillis();
         UsageCalc.Result r = new Store(ctx).compute(now);
-        for (int id : ids) mgr.updateAppWidget(id, build(ctx, r, now));
+        for (int id : ids) {
+            mgr.updateAppWidget(id, gauge ? UsageWidgetIcon.build(ctx, r) : build(ctx, r, now));
+        }
         scheduleNextChange(ctx, r);
     }
 
@@ -81,7 +85,7 @@ public class UsageWidget extends AppWidgetProvider {
         fill(full, r, now, true);
         fill(fullWide, r, now, true);
         for (RemoteViews v : new RemoteViews[] {small, wide, full, fullWide}) bindClicks(ctx, v);
-        bindUsageInput(ctx, wide);
+        bindUsageInput(ctx, wide, R.id.w_used_box);
         // 시스템이 위젯 크기에 맞는(들어가면서 가장 가까운) 레이아웃을 고름:
         // 폭 280dp 이상 한 줄 높이 → 한 줄, 두 줄 이상 → 큰 레이아웃
         Map<SizeF, RemoteViews> m = new ArrayMap<>();
@@ -175,12 +179,12 @@ public class UsageWidget extends AppWidgetProvider {
         v.setOnClickPendingIntent(R.id.w_refresh, piRefresh);
     }
 
-    /** 한 줄 위젯: 왼쪽 사용량 숫자를 누르면 사용량 입력 창 */
-    private static void bindUsageInput(Context ctx, RemoteViews v) {
+    /** 한 줄 위젯의 왼쪽 사용량 숫자·게이지 위젯을 누르면 사용량 입력 창 */
+    static void bindUsageInput(Context ctx, RemoteViews v, int viewId) {
         Intent input = new Intent(ctx, UsageInputActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         PendingIntent pi = PendingIntent.getActivity(ctx, 2, input,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        v.setOnClickPendingIntent(R.id.w_used_box, pi);
+        v.setOnClickPendingIntent(viewId, pi);
     }
 }
