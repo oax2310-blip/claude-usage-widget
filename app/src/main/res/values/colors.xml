@@ -9,8 +9,8 @@
     <color name="used">@android:color/system_accent3_600</color>
     <color name="track">@android:color/system_neutral2_200</color>
     <color name="warn">#C62828</color>
-    <!-- 앱 아이콘 배경: Claude 앱 아이콘과 같은 클레이 -->
-    <color name="launcher_bg">#D97757</color>
+    <!-- 앱 아이콘 배경 -->
+    <color name="launcher_bg">#141413</color>
     <!-- 1x1 게이지 위젯(라이트·다크 같은 색) -->
     <color name="gauge_bg">#141413</color>
     <color name="gauge_track">#3A3935</color>
